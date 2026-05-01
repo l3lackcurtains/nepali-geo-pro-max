@@ -1,7 +1,7 @@
 # nepali-geo-pro-max — LLM cheat sheet
 
 > Nepal administrative divisions library covering BOTH the current federal hierarchy (post-2015 constitution / post-2017 local-level reorg) AND the legacy hierarchy (pre-2015 development regions / zones, pre-2017 75 districts, VDCs).
-> Current: 7 provinces · 77 districts · 17 metro/sub-metro local units (v1) · postal codes · fuzzy search · address formatter / parser / validator.
+> Current: 7 provinces · 77 districts · **all 753 local-level units** (6 metro + 11 sub-metro + 276 municipalities + 460 rural municipalities) with bilingual names and ward counts · postal codes (metro/sub-metro) · fuzzy search · address formatter / parser / validator.
 > Legacy: 5 regions · 14 zones · 75 districts · cross-walks to current districts · VDC API.
 > TypeScript-first. Zero deps. ESM + CJS.
 
@@ -14,7 +14,7 @@
 | All districts | `getDistricts()` → 77 |
 | District by name/id/alias | `getDistrict("Kathmandu" \| "Kavre" \| "P3.D05")` |
 | Districts of a province | `getDistrictsByProvince("Bagmati")` |
-| All shipped local units | `getLocalUnits()` → 17 (metro+sub-metro) |
+| All local units | `getLocalUnits()` → **753** (6+11+276+460) |
 | Local unit by name/alias | `getLocalUnit("KMC" \| "Patan" \| "Lalitpur Metropolitan City")` |
 | Lookup by postal code | `findByPostalCode("44600")` → KMC |
 | Walk parents | `getParents("P3.D05.L01")` |
@@ -56,15 +56,17 @@
 
 ## Authoritative counts — current hierarchy
 
-| Level | Total | Shipped (v1) |
+| Level | Total | Shipped |
 |---|---|---|
 | Provinces | 7 | 7 ✅ |
 | Districts | 77 | 77 ✅ |
 | Metropolitan | 6 | 6 ✅ |
 | Sub-metropolitan | 11 | 11 ✅ |
-| Municipalities | 276 | 0 ⏳ |
-| Rural municipalities | 460 | 0 ⏳ |
-| Total local-level units | **753** | 17 |
+| Municipalities | 276 | 276 ✅ |
+| Rural municipalities | 460 | 460 ✅ |
+| **Total local-level units** | **753** | **753 ✅** |
+
+Source for full palika dataset: [`sagautam5/local-states-nepal`](https://github.com/sagautam5/local-states-nepal) (MIT-licensed) — bilingual JSON cross-validated against the 6/11/276/460/753 invariants.
 
 District distribution by province:
 - P1 Koshi: 14
@@ -386,9 +388,7 @@ import type {
 
 ## Roadmap
 
-- v1.1: 276 municipalities (PRs welcome — see contributing)
-- v1.2: 460 rural municipalities
-- v1.3: postal codes for every palika
+- v1.1: postal codes for every palika (currently for metro/sub-metro tier only)
 - v1.x: seed `LEGACY_VDCS` with verified VDC data (PRs welcome)
 - v2.0: ward-level data + boundary GeoJSON via subpath imports
 - v2.x: `getProvinceByCoords(lat, lng)` point-in-polygon

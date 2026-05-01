@@ -63,11 +63,15 @@ describe("invariants", () => {
     }
   });
 
-  it("17 metro/sub-metro shipped in v1", () => {
-    const metro = LOCAL_UNITS.filter((u) => u.type === "metropolitan");
-    const sub = LOCAL_UNITS.filter((u) => u.type === "sub-metropolitan");
-    expect(metro).toHaveLength(6);
-    expect(sub).toHaveLength(11);
+  it("all 753 palikas shipped (full dataset)", () => {
+    expect(LOCAL_UNITS).toHaveLength(753);
+  });
+
+  it("type counts match canonical totals exactly", () => {
+    expect(LOCAL_UNITS.filter((u) => u.type === "metropolitan")).toHaveLength(6);
+    expect(LOCAL_UNITS.filter((u) => u.type === "sub-metropolitan")).toHaveLength(11);
+    expect(LOCAL_UNITS.filter((u) => u.type === "municipality")).toHaveLength(276);
+    expect(LOCAL_UNITS.filter((u) => u.type === "rural-municipality")).toHaveLength(460);
   });
 
   it("nationwide totals match Nepal Election Commission", () => {
@@ -78,6 +82,27 @@ describe("invariants", () => {
     expect(LOCAL_UNIT_TYPE_COUNTS["rural-municipality"]).toBe(460);
     const total = Object.values(LOCAL_UNIT_TYPE_COUNTS).reduce((a, b) => a + b, 0);
     expect(total).toBe(TOTAL_LOCAL_UNITS);
+  });
+
+  it("every palika has bilingual non-empty names", () => {
+    for (const u of LOCAL_UNITS) {
+      expect(u.nameEn.length).toBeGreaterThan(0);
+      expect(u.nameNe.length).toBeGreaterThan(0);
+      // nameNe must contain at least one Devanagari char
+      expect(/[ऀ-ॿ]/.test(u.nameNe)).toBe(true);
+    }
+  });
+
+  it("every palika has positive ward count", () => {
+    for (const u of LOCAL_UNITS) {
+      expect(u.wards).toBeGreaterThan(0);
+      expect(u.wards).toBeLessThan(50);  // sanity
+    }
+  });
+
+  it("local unit IDs are all unique", () => {
+    const ids = new Set(LOCAL_UNITS.map((u) => u.id));
+    expect(ids.size).toBe(LOCAL_UNITS.length);
   });
 
   it("province ids are P1..P7", () => {

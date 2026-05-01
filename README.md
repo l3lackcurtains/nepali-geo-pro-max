@@ -40,7 +40,7 @@ The complete Nepal administrative-divisions library. **7 provinces, 77 districts
 
 - 🇳🇵 **Bilingual everywhere** — every record has `nameEn` (Roman) + `nameNe` (Devanagari)
 - 📍 **All 7 provinces + 77 districts** (post-2017 federal restructuring)
-- 🏙️ **All 17 metropolitan + sub-metropolitan cities** with postal codes & capital coordinates
+- 🏙️ **All 753 local-level units** — 6 metropolitan + 11 sub-metropolitan + 276 municipalities + 460 rural municipalities, with bilingual names and ward counts
 - 🏛️ **Full legacy layer** — 5 development regions, 14 zones, **75 pre-2017 districts** with cross-walks to current districts (VDC API too)
 - 🔍 **Fuzzy search** — Levenshtein-based, bilingual queries, alias-aware (`KMC` → KMC, `Patan` → Lalitpur)
 - 📮 **Postal-code lookup** — find a city by 5-digit code
@@ -128,11 +128,14 @@ validateAddress({ province: "Bagmati", district: "Kaski" }).errors;
 |---|---|---|---|
 | Provinces | **7 / 7** ✅ | 7 | Full bilingual + capital + area + population |
 | Districts | **77 / 77** ✅ | 77 | Full bilingual + headquarters + aliases |
-| Metropolitan cities | **6 / 6** ✅ | 6 | Postal codes + coordinates |
-| Sub-metropolitan cities | **11 / 11** ✅ | 11 | Postal codes + coordinates |
-| Municipalities | 0 / 276 ⏳ | 276 | v1.x — PRs welcome |
-| Rural municipalities | 0 / 460 ⏳ | 460 | v1.x — PRs welcome |
-| Wards (1–35 per palika) | 0 / ~6,743 ⏳ | ~6,743 | v2 — derived from palika data |
+| Metropolitan cities | **6 / 6** ✅ | 6 | Postal codes + coordinates + bilingual |
+| Sub-metropolitan cities | **11 / 11** ✅ | 11 | Postal codes + coordinates + bilingual |
+| Municipalities | **276 / 276** ✅ | 276 | Bilingual + ward counts |
+| Rural municipalities | **460 / 460** ✅ | 460 | Bilingual + ward counts |
+| **All local-level units** | **753 / 753** ✅ | 753 | Full 6+11+276+460 ✓ |
+| Wards (per palika) | derived ✅ | ~6,743 | Each palika carries `wards: number`; individual ward records generated on demand |
+
+**Data source:** [`sagautam5/local-states-nepal`](https://github.com/sagautam5/local-states-nepal) (MIT) — bilingual JSON for the post-2017 federal hierarchy. Cross-validated against the 6/11/276/460/753 invariants.
 
 ### Legacy (pre-2015 / pre-2017)
 
@@ -603,11 +606,9 @@ if (unit) {
 
 ## 🛣️ Roadmap
 
-- **v1.1** — All 276 municipalities (per-province PRs welcome)
-- **v1.2** — All 460 rural municipalities
-- **v1.3** — Postal-code lookups for every palika
+- **v1.1** — Postal-code lookups for every palika (currently shipped for the 17 metro/sub-metro tier only)
 - **v1.x** — Seed `LEGACY_VDCS` with verified VDC data (PRs welcome)
-- **v2.0** — Ward-level data + boundary GeoJSON via subpath imports (`/geo/provinces`, `/geo/districts`)
+- **v2.0** — Ward-level data + boundary GeoJSON via subpath imports (`/geo/provinces`, `/geo/districts`, `/geo/local-units`)
 - **v2.x** — Point-in-polygon `getProvinceByCoords(lat, lng)` for geo-queries
 
 ---
