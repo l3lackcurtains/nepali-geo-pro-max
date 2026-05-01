@@ -33,6 +33,22 @@ if ! npm whoami >/dev/null 2>&1; then
   exit 1
 fi
 
+# Project the next version (without mutating package.json) and confirm it isn't
+# already on the registry — catches accidental re-bumps before doing real work.
+CURRENT="$(node -p "require('./package.json').version")"
+NAME="$(node -p "require('./package.json').name")"
+IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+case "$BUMP" in
+  patch) NEXT="$MAJOR.$MINOR.$((PATCH + 1))" ;;
+  minor) NEXT="$MAJOR.$((MINOR + 1)).0" ;;
+  major) NEXT="$((MAJOR + 1)).0.0" ;;
+esac
+if npm view "$NAME@$NEXT" version >/dev/null 2>&1; then
+  echo "✗ $NAME@$NEXT already exists on npm." >&2
+  exit 1
+fi
+echo "→ $NAME: $CURRENT → $NEXT"
+
 # Run checks before bumping so a failure doesn't leave an orphan version + tag.
 echo "→ Running checks..."
 npm run typecheck
