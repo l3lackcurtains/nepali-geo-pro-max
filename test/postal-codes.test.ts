@@ -9,8 +9,8 @@ import {
 } from "../src/index.js";
 
 describe("postal-code data", () => {
-  it("POSTAL_CODES has at least 150 entries (target: ~193)", () => {
-    expect(Object.keys(POSTAL_CODES).length).toBeGreaterThanOrEqual(150);
+  it("POSTAL_CODES has at least 400 entries (target: ~409 after v1.3 expansion)", () => {
+    expect(Object.keys(POSTAL_CODES).length).toBeGreaterThanOrEqual(400);
   });
 
   it("every postal code is exactly 5 ASCII digits", () => {

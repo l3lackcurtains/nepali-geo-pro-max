@@ -106,6 +106,8 @@ export {
   type BBox,
   type DistrictGeoFeature,
   type DistrictGeoFeatureCollection,
+  type LocalUnitGeoFeature,
+  type LocalUnitGeoFeatureCollection,
   type MultiPolygon,
   type Polygon,
   type PolygonGeometry,
@@ -113,13 +115,17 @@ export {
   type ProvinceGeoFeature,
   type ProvinceGeoFeatureCollection,
   type Ring,
+  type SvgPath,
+  type SvgPathsResult,
   type ToSvgOptions,
   computeBBox,
   findDistrictFeatureByCoords,
   findFeatureByCoords,
+  findLocalUnitFeatureByCoords,
   findProvinceFeatureByCoords,
   pointInGeometry,
   toSvg,
+  toSvgPaths,
 } from "./geo/index.js";
 
 // ---------- Search ----------

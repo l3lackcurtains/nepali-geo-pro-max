@@ -5,7 +5,7 @@
  * dependency. If you want full GeoJSON spec types, cast at the call site.
  */
 
-import type { DistrictId, ProvinceId } from "../types.js";
+import type { DistrictId, LocalUnitType, ProvinceId } from "../types.js";
 
 /** A `[lng, lat]` coordinate pair. */
 export type Position = readonly [number, number];
@@ -59,5 +59,24 @@ export interface DistrictGeoFeatureCollection {
   readonly features: readonly DistrictGeoFeature[];
 }
 
+/** Feature with a palika-level (local-unit) geometry. */
+export interface LocalUnitGeoFeature {
+  readonly type: "Feature";
+  readonly properties: {
+    readonly nameEn: string;
+    readonly nameNe: string;
+    readonly districtId: DistrictId;
+    readonly provinceId: ProvinceId;
+    readonly type: LocalUnitType;
+  };
+  readonly geometry: PolygonGeometry;
+}
+
+/** Palika-level FeatureCollection (753 features). */
+export interface LocalUnitGeoFeatureCollection {
+  readonly type: "FeatureCollection";
+  readonly features: readonly LocalUnitGeoFeature[];
+}
+
 /** Union of geometric features the SVG / point-in-polygon helpers accept. */
-export type AdminFeature = ProvinceGeoFeature | DistrictGeoFeature;
+export type AdminFeature = ProvinceGeoFeature | DistrictGeoFeature | LocalUnitGeoFeature;

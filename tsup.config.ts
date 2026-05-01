@@ -6,6 +6,7 @@ export default defineConfig({
     "geo/index": "src/geo/index.ts",
     "geo/districts": "src/geo/districts.geo.ts",
     "geo/provinces": "src/geo/provinces.geo.ts",
+    "geo/local-units": "src/geo/local-units.geo.ts",
   },
   format: ["esm", "cjs"],
   dts: true,

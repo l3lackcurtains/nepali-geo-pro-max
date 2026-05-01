@@ -23,6 +23,7 @@
 import type {
   AdminFeature,
   DistrictGeoFeatureCollection,
+  LocalUnitGeoFeatureCollection,
   PolygonGeometry,
   Position,
   ProvinceGeoFeatureCollection,
@@ -33,7 +34,10 @@ export type BBox = readonly [number, number, number, number];
 
 /** Compute bbox of a feature collection. */
 export function computeBBox(
-  fc: DistrictGeoFeatureCollection | ProvinceGeoFeatureCollection,
+  fc:
+    | DistrictGeoFeatureCollection
+    | ProvinceGeoFeatureCollection
+    | LocalUnitGeoFeatureCollection,
 ): BBox {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const f of fc.features) {
@@ -88,36 +92,77 @@ export interface ToSvgOptions {
 }
 
 /**
- * Convert a Nepal admin GeoJSON FeatureCollection into a self-contained SVG
- * string. Equirectangular projection (lng/lat → x/y).
+ * One projected SVG `<path>` worth of data — emitted by `toSvgPaths()`.
+ * Designed to be rendered as a React/Vue/Svelte/Solid component:
+ *
+ * @example
+ * ```tsx
+ * const { paths, viewBox } = toSvgPaths(NEPAL_DISTRICTS_GEO, { width: 800 });
+ * return (
+ *   <svg viewBox={viewBox}>
+ *     {paths.map((p) => (
+ *       <path
+ *         key={p.id}
+ *         d={p.d}
+ *         fill={p.fill}
+ *         stroke="#fff"
+ *         onClick={() => alert(p.feature.properties.nameEn)}
+ *       />
+ *     ))}
+ *   </svg>
+ * );
+ * ```
  */
-export function toSvg(
-  fc: DistrictGeoFeatureCollection | ProvinceGeoFeatureCollection,
-  options: ToSvgOptions = {},
-): string {
-  const {
-    width = 800,
-    height,
-    padding = 8,
-    fill = "#e0e0e0",
-    stroke = "#fff",
-    strokeWidth = 0.5,
-    background = "none",
-    title,
-    svgAttrs = {},
-    featureAttrs,
-    idPrefix = "path",
-  } = options;
+export interface SvgPath<F extends AdminFeature = AdminFeature> {
+  /** Stable identifier — feature's `id` if present, else `<idPrefix>-<index>`. */
+  readonly id: string;
+  /** SVG path `d` attribute (`M…L…Z` commands). */
+  readonly d: string;
+  /** Resolved fill colour (after running the `fill` option). */
+  readonly fill: string;
+  /** The original GeoJSON feature this path was projected from. */
+  readonly feature: F;
+}
+
+/** Output of `toSvgPaths` — projection metadata + per-feature paths. */
+export interface SvgPathsResult<F extends AdminFeature = AdminFeature> {
+  /** SVG `viewBox` string, e.g. `"0 0 800 412"`. */
+  readonly viewBox: string;
+  readonly width: number;
+  readonly height: number;
+  readonly bbox: BBox;
+  readonly paths: readonly SvgPath<F>[];
+}
+
+type AnyFc =
+  | DistrictGeoFeatureCollection
+  | ProvinceGeoFeatureCollection
+  | LocalUnitGeoFeatureCollection;
+
+/**
+ * Project a Nepal FeatureCollection into structured per-feature SVG path data.
+ * Use this for **interactive React / Vue / Svelte / Solid maps** where you
+ * want to render each path as a component with event handlers.
+ *
+ * For a one-shot SVG string (SSR, static files, emails), use `toSvg()`.
+ */
+export function toSvgPaths<F extends AdminFeature = AdminFeature>(
+  fc: AnyFc,
+  options: Pick<
+    ToSvgOptions,
+    "width" | "height" | "padding" | "fill" | "idPrefix"
+  > = {},
+): SvgPathsResult<F> {
+  const { width = 800, height, padding = 8, fill = "#e0e0e0", idPrefix = "path" } = options;
 
   const bbox = computeBBox(fc);
   const [minX, minY, maxX, maxY] = bbox;
   const dx = maxX - minX;
   const dy = maxY - minY;
   if (dx <= 0 || dy <= 0) {
-    throw new RangeError("toSvg: empty or degenerate FeatureCollection");
+    throw new RangeError("toSvgPaths: empty or degenerate FeatureCollection");
   }
 
-  // Account for latitude flipping (SVG y grows down).
   const innerW = width - 2 * padding;
   const aspect = dx / dy;
   const actualHeight = height ?? Math.round(innerW / aspect + 2 * padding);
@@ -127,34 +172,71 @@ export function toSvg(
   const offsetY = padding + (innerH - dy * scale) / 2;
 
   function project([lng, lat]: Position): [number, number] {
-    const x = (lng - minX) * scale + offsetX;
-    const y = (maxY - lat) * scale + offsetY;
-    return [round(x), round(y)];
+    return [
+      round((lng - minX) * scale + offsetX),
+      round((maxY - lat) * scale + offsetY),
+    ];
   }
 
   function geometryToPath(geom: PolygonGeometry): string {
     const parts: string[] = [];
-    if (geom.type === "Polygon") {
-      ringToPath(geom.coordinates, parts);
-    } else {
-      for (const poly of geom.coordinates) ringToPath(poly, parts);
-    }
+    const handle = (rings: readonly (readonly Position[])[]) => {
+      for (const ring of rings) {
+        if (ring.length === 0) continue;
+        const first = project(ring[0]!);
+        let s = `M${first[0]} ${first[1]}`;
+        for (let i = 1; i < ring.length; i++) {
+          const [x, y] = project(ring[i]!);
+          s += `L${x} ${y}`;
+        }
+        s += "Z";
+        parts.push(s);
+      }
+    };
+    if (geom.type === "Polygon") handle(geom.coordinates);
+    else for (const poly of geom.coordinates) handle(poly);
     return parts.join(" ");
   }
 
-  function ringToPath(rings: readonly (readonly Position[])[], out: string[]): void {
-    for (const ring of rings) {
-      if (ring.length === 0) continue;
-      const first = project(ring[0]!);
-      let s = `M${first[0]} ${first[1]}`;
-      for (let i = 1; i < ring.length; i++) {
-        const [x, y] = project(ring[i]!);
-        s += `L${x} ${y}`;
-      }
-      s += "Z";
-      out.push(s);
-    }
-  }
+  const paths = fc.features.map((f, i): SvgPath<F> => {
+    const d = geometryToPath(f.geometry);
+    const fillVal = typeof fill === "function" ? fill(f as AdminFeature) : fill;
+    const props = f.properties as Record<string, unknown>;
+    const idVal =
+      "id" in props && typeof props.id === "string"
+        ? props.id
+        : `${idPrefix}-${i}`;
+    return { id: idVal, d, fill: fillVal, feature: f as F };
+  });
+
+  return {
+    viewBox: `0 0 ${width} ${actualHeight}`,
+    width,
+    height: actualHeight,
+    bbox,
+    paths,
+  };
+}
+
+/**
+ * Convert a Nepal admin GeoJSON FeatureCollection into a self-contained SVG
+ * string. Equirectangular projection (lng/lat → x/y). Best for SSR, static
+ * file generation, emails, or `dangerouslySetInnerHTML` in React.
+ *
+ * For interactive React/Vue/Svelte rendering with per-feature event handlers,
+ * use `toSvgPaths()` instead.
+ */
+export function toSvg(fc: AnyFc, options: ToSvgOptions = {}): string {
+  const {
+    stroke = "#fff",
+    strokeWidth = 0.5,
+    background = "none",
+    title,
+    svgAttrs = {},
+    featureAttrs,
+  } = options;
+
+  const projected = toSvgPaths(fc, options);
 
   function attrString(attrs: Record<string, string | number>): string {
     return Object.entries(attrs)
@@ -162,19 +244,16 @@ export function toSvg(
       .join("");
   }
 
-  const paths = fc.features
-    .map((f, i): string => {
-      const d = geometryToPath(f.geometry);
-      const fillVal = typeof fill === "function" ? fill(f) : fill;
-      const idVal = ("id" in f.properties ? f.properties.id : `${idPrefix}-${i}`) as string;
+  const pathEls = projected.paths
+    .map((p): string => {
       const baseAttrs: Record<string, string | number> = {
-        id: idVal,
-        d,
-        fill: fillVal,
+        id: p.id,
+        d: p.d,
+        fill: p.fill,
         stroke,
         "stroke-width": strokeWidth,
       };
-      const extra = featureAttrs ? featureAttrs(f) : {};
+      const extra = featureAttrs ? featureAttrs(p.feature) : {};
       return `<path${attrString({ ...baseAttrs, ...extra })}/>`;
     })
     .join("");
@@ -186,20 +265,14 @@ export function toSvg(
 
   const svgRootAttrs = {
     xmlns: "http://www.w3.org/2000/svg",
-    viewBox: `0 0 ${width} ${actualHeight}`,
-    width,
-    height: actualHeight,
+    viewBox: projected.viewBox,
+    width: projected.width,
+    height: projected.height,
     role: "img",
     ...svgAttrs,
   };
 
-  return (
-    `<svg${attrString(svgRootAttrs)}>` +
-    titleEl +
-    bgEl +
-    paths +
-    `</svg>`
-  );
+  return `<svg${attrString(svgRootAttrs)}>` + titleEl + bgEl + pathEls + `</svg>`;
 }
 
 function round(n: number): number {

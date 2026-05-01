@@ -27,6 +27,11 @@
       "import": "./dist/geo/provinces.js",
       "require": "./dist/geo/provinces.cjs"
     },
+    "./geo/local-units": {
+      "types": "./dist/geo/local-units.d.ts",
+      "import": "./dist/geo/local-units.js",
+      "require": "./dist/geo/local-units.cjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [

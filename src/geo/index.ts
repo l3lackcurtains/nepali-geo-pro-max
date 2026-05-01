@@ -11,14 +11,18 @@
 
 export {
   type BBox,
+  type SvgPath,
+  type SvgPathsResult,
   type ToSvgOptions,
   computeBBox,
   toSvg,
+  toSvgPaths,
 } from "./svg.js";
 
 export {
   findDistrictFeatureByCoords,
   findFeatureByCoords,
+  findLocalUnitFeatureByCoords,
   findProvinceFeatureByCoords,
   pointInGeometry,
 } from "./point-in-polygon.js";
@@ -27,6 +31,8 @@ export type {
   AdminFeature,
   DistrictGeoFeature,
   DistrictGeoFeatureCollection,
+  LocalUnitGeoFeature,
+  LocalUnitGeoFeatureCollection,
   MultiPolygon,
   Polygon,
   PolygonGeometry,

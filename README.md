@@ -49,7 +49,7 @@ The complete Nepal administrative-divisions library. **7 provinces, 77 districts
 - 📥 **Address parser** — free-form input → structured parts with confidence score
 - ✅ **Address validator** — checks province/district/local-unit/ward consistency
 - 🆔 **Stable canonical IDs** — `P3.D05.L01.W05` (modern) and `R2 / Z05 / LD23` (legacy)
-- 🗺️ **Maps included** — official **चुच्चे (chuche) map** of Nepal (post-May-2020 boundary including Kalapani / Lipulekh / Limpiyadhura), bundled GeoJSON for 7 provinces + 77 districts, `toSvg()` renderer, and `(lat, lng) → district` point-in-polygon — works in Node, the browser, and edge runtimes
+- 🗺️ **Maps included** — official **चुच्चे (chuche) map** of Nepal (post-May-2020 boundary including Kalapani / Lipulekh / Limpiyadhura), bundled GeoJSON for 7 provinces + 77 districts + **all 753 palikas**, `toSvg()` for static/SSR + `toSvgPaths()` for interactive React/Vue/Svelte, plus `(lat, lng) → district / palika` point-in-polygon — works in Node, the browser, and edge runtimes
 - 📦 **Tree-shakeable** — pure ESM exports, `sideEffects: false`
 - 🎯 **TypeScript-first** — strict mode, branded types, full JSDoc
 - 🪶 **Zero dependencies** — Node, Deno, Bun, browsers, Workers
@@ -135,7 +135,7 @@ validateAddress({ province: "Bagmati", district: "Kaski" }).errors;
 | Municipalities | **276 / 276** ✅ | 276 | Bilingual + ward counts |
 | Rural municipalities | **460 / 460** ✅ | 460 | Bilingual + ward counts |
 | **All local-level units** | **753 / 753** ✅ | 753 | Full 6+11+276+460 ✓ |
-| Postal codes (palika) | **193 / 753** (25.6%) | ~753 | All 17 metro/sub-metro + all 77 district HQs + verified branches |
+| Postal codes (palika) | **409 / 753** (54.3%) | ~753 | All 17 metro/sub-metro + all 77 district HQs + 216 VDC-merger-derived palikas |
 | District postcode prefixes | **77 / 77** ✅ | 77 | First-2-digit lookup |
 | Wards (per palika) | derived ✅ | ~6,743 | Each palika carries `wards: number`; individual ward records generated on demand |
 
@@ -143,7 +143,7 @@ validateAddress({ province: "Bagmati", district: "Kaski" }).errors;
 - Palikas: [`sagautam5/local-states-nepal`](https://github.com/sagautam5/local-states-nepal) (MIT) — bilingual JSON, cross-validated against 6/11/276/460/753 invariants.
 - Postal codes: Wikipedia "Postal codes in Nepal" + Nepal General Post Office (gpo.gov.np). Uses **legacy 1991 codes** (still operationally dominant); a parallel 2025 federal-aligned system exists at GPO but isn't yet used in everyday post.
 
-**Postal-code coverage note:** ~74% of palikas don't have an authoritative legacy code because most rural municipalities were formed in 2017 by merging former VDCs — the post-office branch still carries the old VDC name (e.g. PO "Pala" 33302 in Baglung). Mapping these requires palika-ward-to-VDC research. We **omit** rather than fabricate — partial high-confidence data over guesswork.
+**Postal-code coverage note (v1.3 expansion):** Coverage jumped from 25.6% → 54.3% by cross-walking the [`code-geek/nepal_data`](https://github.com/code-geek/nepal_data) VDC→palika merger table (3,431 rows) against the Wikipedia Nepal Post directory (919 PO entries). Each new entry is annotated inline with its source. Ambiguous fuzzy matches were dropped; we **omit rather than guess**. The remaining ~46% gap is mostly rural municipalities where Nepal Post never opened a branch in any constituent VDC.
 
 ### Legacy (pre-2015 / pre-2017)
 
@@ -394,6 +394,198 @@ toSvg(NEPAL_DISTRICTS_GEO, {
 });
 ```
 
+### All 753 palikas
+
+<p align="center">
+  <img src="docs/nepal-palikas.svg" alt="Nepal — all 753 local-level units coloured by province" width="900" />
+</p>
+
+```ts
+import { toSvg } from "nepali-geo-pro-max";
+import { NEPAL_LOCAL_UNITS_GEO } from "nepali-geo-pro-max/geo/local-units";
+
+const svg = toSvg(NEPAL_LOCAL_UNITS_GEO, {
+  width: 1200,
+  fill: (f) => PROVINCE_COLORS[f.properties.provinceId],
+  stroke: "#FFFFFF",
+  strokeWidth: 0.25,
+  background: "#F8FAFC",
+});
+```
+
+### Palikas coloured by type
+
+<p align="center">
+  <img src="docs/nepal-palikas-by-type.svg" alt="Nepal — palikas coloured by type (metro / sub-metro / muni / rural)" width="900" />
+</p>
+
+```ts
+const TYPE_COLORS = {
+  metropolitan: "#E63946",        // crimson — the 6 metros
+  "sub-metropolitan": "#F77F00",  // orange — the 11 sub-metros
+  municipality: "#457B9D",        // steel blue — 276 municipalities
+  "rural-municipality": "#A8DADC",// pale teal — 460 rural municipalities
+};
+
+toSvg(NEPAL_LOCAL_UNITS_GEO, {
+  width: 1200,
+  fill: (f) => TYPE_COLORS[f.properties.type],
+  stroke: "#FFFFFF",
+  strokeWidth: 0.25,
+  background: "#F8FAFC",
+});
+```
+
+### Point-in-polygon at palika resolution
+
+```ts
+import { findLocalUnitFeatureByCoords } from "nepali-geo-pro-max";
+import { NEPAL_LOCAL_UNITS_GEO } from "nepali-geo-pro-max/geo/local-units";
+
+const lu = findLocalUnitFeatureByCoords(NEPAL_LOCAL_UNITS_GEO, 27.7172, 85.3240);
+// → { properties: {
+//     nameEn: "Kathmandu",
+//     nameNe: "काठमाडौँ महानगरपालिका",
+//     districtId: "P3.D05",
+//     provinceId: "P3",
+//     type: "metropolitan"
+//   }, ... }
+```
+
+### Use in React / Vue / Svelte / Solid
+
+The `toSvg()` helper above returns a string — perfect for SSR, static files, emails, or `dangerouslySetInnerHTML`. For **interactive** maps where you want hover, click, or per-district event handlers, use `toSvgPaths()` instead — it returns structured per-feature data your framework can render natively.
+
+#### React
+
+```tsx
+import { toSvgPaths } from "nepali-geo-pro-max";
+import { NEPAL_DISTRICTS_GEO } from "nepali-geo-pro-max/geo/districts";
+import { useMemo, useState } from "react";
+
+const PROVINCE_COLORS = {
+  P1: "#E63946", P2: "#F4A261", P3: "#2A9D8F", P4: "#457B9D",
+  P5: "#E9C46A", P6: "#7209B7", P7: "#F77F00",
+};
+
+export function NepalMap() {
+  const [hovered, setHovered] = useState<string | null>(null);
+  const { paths, viewBox } = useMemo(
+    () => toSvgPaths(NEPAL_DISTRICTS_GEO, {
+      width: 800,
+      fill: (f) => PROVINCE_COLORS[f.properties.provinceId],
+    }),
+    [],
+  );
+
+  return (
+    <svg viewBox={viewBox} role="img" aria-label="Map of Nepal">
+      {paths.map((p) => (
+        <path
+          key={p.id}
+          d={p.d}
+          fill={hovered === p.id ? "#000" : p.fill}
+          stroke="#fff"
+          strokeWidth={0.5}
+          onMouseEnter={() => setHovered(p.id)}
+          onMouseLeave={() => setHovered(null)}
+          onClick={() => alert(p.feature.properties.nameEn)}
+          style={{ cursor: "pointer", transition: "fill 0.15s" }}
+        />
+      ))}
+    </svg>
+  );
+}
+```
+
+#### Vue 3
+
+```vue
+<script setup lang="ts">
+import { toSvgPaths } from "nepali-geo-pro-max";
+import { NEPAL_DISTRICTS_GEO } from "nepali-geo-pro-max/geo/districts";
+import { ref } from "vue";
+
+const PROVINCE_COLORS = {
+  P1: "#E63946", P2: "#F4A261", P3: "#2A9D8F", P4: "#457B9D",
+  P5: "#E9C46A", P6: "#7209B7", P7: "#F77F00",
+};
+
+const { paths, viewBox } = toSvgPaths(NEPAL_DISTRICTS_GEO, {
+  width: 800,
+  fill: (f) => PROVINCE_COLORS[f.properties.provinceId],
+});
+
+const hovered = ref<string | null>(null);
+</script>
+
+<template>
+  <svg :viewBox="viewBox" role="img">
+    <path
+      v-for="p in paths"
+      :key="p.id"
+      :d="p.d"
+      :fill="hovered === p.id ? '#000' : p.fill"
+      stroke="#fff"
+      stroke-width="0.5"
+      @mouseenter="hovered = p.id"
+      @mouseleave="hovered = null"
+      @click="$emit('select', p.feature.properties.nameEn)"
+      style="cursor: pointer"
+    />
+  </svg>
+</template>
+```
+
+#### Svelte
+
+```svelte
+<script lang="ts">
+  import { toSvgPaths } from "nepali-geo-pro-max";
+  import { NEPAL_DISTRICTS_GEO } from "nepali-geo-pro-max/geo/districts";
+
+  const PROVINCE_COLORS = {
+    P1: "#E63946", P2: "#F4A261", P3: "#2A9D8F", P4: "#457B9D",
+    P5: "#E9C46A", P6: "#7209B7", P7: "#F77F00",
+  } as const;
+
+  const { paths, viewBox } = toSvgPaths(NEPAL_DISTRICTS_GEO, {
+    width: 800,
+    fill: (f) => PROVINCE_COLORS[f.properties.provinceId],
+  });
+
+  let hovered: string | null = null;
+</script>
+
+<svg {viewBox} role="img">
+  {#each paths as p (p.id)}
+    <path
+      d={p.d}
+      fill={hovered === p.id ? "#000" : p.fill}
+      stroke="#fff" stroke-width="0.5"
+      on:mouseenter={() => (hovered = p.id)}
+      on:mouseleave={() => (hovered = null)}
+      on:click={() => alert(p.feature.properties.nameEn)}
+    />
+  {/each}
+</svg>
+```
+
+#### SSR / static / `dangerouslySetInnerHTML`
+
+If you don't need interactivity, the simpler `toSvg()` returns a complete SVG string:
+
+```tsx
+import { toSvg } from "nepali-geo-pro-max";
+import { NEPAL_PROVINCES_GEO } from "nepali-geo-pro-max/geo/provinces";
+
+const svg = toSvg(NEPAL_PROVINCES_GEO, { width: 800 });
+
+// React: <div dangerouslySetInnerHTML={{ __html: svg }} />
+// Next.js / Astro / SvelteKit: server-render once, embed in HTML
+// Node script: fs.writeFileSync("nepal.svg", svg)
+```
+
 ### Point-in-polygon (`lat, lng → district / province`)
 
 ```ts
@@ -444,14 +636,17 @@ const palikas = district && getLocalUnitsByDistrict(district.id);
 |---|---|---|
 | `nepali-geo-pro-max` | ~232 KB | Everything except heavy GeoJSON |
 | `nepali-geo-pro-max/geo` | ~6 KB | Just `toSvg`, `findFeatureByCoords`, types |
-| `nepali-geo-pro-max/geo/provinces` | ~160 KB | `NEPAL_PROVINCES_GEO` only |
-| `nepali-geo-pro-max/geo/districts` | ~170 KB | `NEPAL_DISTRICTS_GEO` only |
+| `nepali-geo-pro-max/geo/provinces` | ~141 KB | `NEPAL_PROVINCES_GEO` only (7 polygons) |
+| `nepali-geo-pro-max/geo/districts` | ~151 KB | `NEPAL_DISTRICTS_GEO` only (77 polygons) |
+| `nepali-geo-pro-max/geo/local-units` | ~554 KB | `NEPAL_LOCAL_UNITS_GEO` only (753 palikas, simplified at tolerance `1e-4`) |
 
 Polygon GeoJSON loads only if you import the `/geo/*` subpaths — bundlers like Vite, esbuild, Rollup, and webpack tree-shake them out otherwise.
 
 ### Source & licensing
 
-Boundaries: **[`Acesmndr/nepal-geojson`](https://github.com/Acesmndr/nepal-geojson)** v3.0.0+ (May 2020), **MIT-licensed** — the **post-May-2020 चुच्चे (chuche) map of Nepal** that incorporates Kalapani, Lipulekh, and Limpiyadhura territories per Nepal's constitutional amendment. All 77 federal-restructured districts.
+Province + district boundaries: **[`Acesmndr/nepal-geojson`](https://github.com/Acesmndr/nepal-geojson)** v3.0.0+ (May 2020), **MIT-licensed** — the **post-May-2020 चुच्चे (chuche) map of Nepal** that incorporates Kalapani, Lipulekh, and Limpiyadhura territories per Nepal's constitutional amendment. All 77 federal-restructured districts.
+
+Palika boundaries: **[`younginnovations/nepal-locallevel-map`](https://github.com/younginnovations/nepal-locallevel-map)**, **MIT-licensed**, sourced from MoFALD + okfnepal localboundaries — all 753 post-2017 local-level units with bilingual names. The Bardiya / Bansagadhi split (2 source polygons) is merged into 1 MultiPolygon during the build step.
 
 Verified by tests:
 - Western beak (`30.45°N, 80.60°E`) is inside Darchula district ✓
@@ -638,16 +833,19 @@ PRs to seed `data/vdcs.ts` with verified, district-by-district data are very wel
 
 | Function / Constant | Description |
 |---|---|
-| `toSvg(fc, opts?)` | Render a FeatureCollection to a self-contained SVG string |
+| `toSvg(fc, opts?)` | Render a FeatureCollection to a self-contained SVG string (SSR, emails, static files) |
+| `toSvgPaths(fc, opts?)` | Project to structured `{ viewBox, paths: [{id, d, fill, feature}] }` for React/Vue/Svelte rendering with event handlers |
 | `computeBBox(fc)` | `[minLng, minLat, maxLng, maxLat]` |
 | `findProvinceFeatureByCoords(fc, lat, lng)` | Point-in-polygon |
 | `findDistrictFeatureByCoords(fc, lat, lng)` | Point-in-polygon |
+| `findLocalUnitFeatureByCoords(fc, lat, lng)` | Point-in-polygon at palika resolution |
 | `findFeatureByCoords(fc, lat, lng)` | Generic — works on any FeatureCollection |
 | `pointInGeometry(point, geometry)` | Low-level: ray-cast on a polygon/multipolygon |
 | `NEPAL_PROVINCES_GEO` | `nepali-geo-pro-max/geo/provinces` — 7 provinces |
 | `NEPAL_DISTRICTS_GEO` | `nepali-geo-pro-max/geo/districts` — 77 districts |
+| `NEPAL_LOCAL_UNITS_GEO` | `nepali-geo-pro-max/geo/local-units` — 753 palikas |
 
-Types: `BBox`, `ToSvgOptions`, `Position`, `Polygon`, `MultiPolygon`, `PolygonGeometry`, `Ring`, `ProvinceGeoFeature`, `DistrictGeoFeature`, `ProvinceGeoFeatureCollection`, `DistrictGeoFeatureCollection`, `AdminFeature`.
+Types: `BBox`, `ToSvgOptions`, `SvgPath`, `SvgPathsResult`, `Position`, `Polygon`, `MultiPolygon`, `PolygonGeometry`, `Ring`, `ProvinceGeoFeature`, `DistrictGeoFeature`, `LocalUnitGeoFeature`, `ProvinceGeoFeatureCollection`, `DistrictGeoFeatureCollection`, `LocalUnitGeoFeatureCollection`, `AdminFeature`.
 
 </details>
 
@@ -789,11 +987,14 @@ if (unit) {
 
 - ✅ **v1.0** — Full 7 provinces + 77 districts + 753 palikas + bilingual + legacy hierarchy
 - ✅ **v1.1** — Postal codes (193/753 verified palikas + all 77 district prefixes + branch lookups)
-- ✅ **v1.2** — Bundled GeoJSON for 7 provinces + 77 districts via subpath imports, `toSvg()` renderer, `(lat, lng) → district` point-in-polygon lookup
-- **v1.3** — Postal-code coverage expansion — palika-ward-to-VDC research to map remaining ~560 palikas
-- **v1.x** — Seed `LEGACY_VDCS` with verified VDC data (PRs welcome)
-- **v2.0** — Palika-level (753) boundary GeoJSON via `/geo/local-units` subpath
+- ✅ **v1.2** — Bundled GeoJSON for provinces + districts, `toSvg()` renderer, point-in-polygon
+- ✅ **v1.3** — Postal-code coverage expansion via VDC merger cross-walk (193 → **409 / 753, 54.3%**)
+- ✅ **v2.0** — Palika-level (753) boundary GeoJSON via `/geo/local-units` subpath, `findLocalUnitFeatureByCoords()` point-in-polygon
+- ✅ **v2.1** — `toSvgPaths()` helper for interactive React/Vue/Svelte/Solid rendering
+- **v2.2** — Ward-level boundary GeoJSON (~6,743 wards) via `/geo/wards`
 - **v2.x** — Switch to new 2025 GPO federal-aligned postal codes once Nepal Post operationalizes them
+
+> **Note on VDCs:** The pre-2017 VDC system was abolished and replaced by the 753 palikas. We still ship the `Vdc` type + `registerVdcs()` API for users with archived data, but won't bundle a 3,915-row VDC dataset — it's a dead admin layer.
 
 ---
 

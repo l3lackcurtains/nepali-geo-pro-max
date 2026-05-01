@@ -10,6 +10,7 @@ const path = require("path");
 const { toSvg } = require("../dist/geo/index.cjs");
 const { NEPAL_DISTRICTS_GEO } = require("../dist/geo/districts.cjs");
 const { NEPAL_PROVINCES_GEO } = require("../dist/geo/provinces.cjs");
+const { NEPAL_LOCAL_UNITS_GEO } = require("../dist/geo/local-units.cjs");
 
 /**
  * Province palette — curated for Nepal's geographic gradient.
@@ -91,5 +92,42 @@ const darkSvg = toSvg(NEPAL_DISTRICTS_GEO, {
 });
 fs.writeFileSync(path.join(__dirname, "preview-dark.svg"), darkSvg);
 console.log(`Wrote preview-dark.svg (${darkSvg.length} bytes)`);
+
+// 5) Palika-level map — all 753 local units coloured by province
+const palikaSvg = toSvg(NEPAL_LOCAL_UNITS_GEO, {
+  width: 1200,
+  padding: 16,
+  fill: (f) => PROVINCE_COLORS[f.properties.provinceId] || "#cbd5e1",
+  stroke: "#FFFFFF",
+  strokeWidth: 0.25,
+  background: BG_LIGHT,
+  title: "Nepal — all 753 local-level units (palikas)",
+  featureAttrs: (f) => ({
+    "data-name": f.properties.nameEn,
+    "data-type": f.properties.type,
+    "data-district": f.properties.districtId,
+  }),
+});
+fs.writeFileSync(path.join(__dirname, "preview-palikas.svg"), palikaSvg);
+console.log(`Wrote preview-palikas.svg (${palikaSvg.length} bytes)`);
+
+// 6) Palika-level — by type (metropolitan accents)
+const TYPE_COLORS = {
+  metropolitan: "#E63946",       // crimson
+  "sub-metropolitan": "#F77F00", // orange
+  municipality: "#457B9D",       // steel blue
+  "rural-municipality": "#A8DADC", // pale teal
+};
+const palikaTypeSvg = toSvg(NEPAL_LOCAL_UNITS_GEO, {
+  width: 1200,
+  padding: 16,
+  fill: (f) => TYPE_COLORS[f.properties.type] || "#cbd5e1",
+  stroke: "#FFFFFF",
+  strokeWidth: 0.25,
+  background: BG_LIGHT,
+  title: "Nepal — palikas coloured by type",
+});
+fs.writeFileSync(path.join(__dirname, "preview-palikas-by-type.svg"), palikaTypeSvg);
+console.log(`Wrote preview-palikas-by-type.svg (${palikaTypeSvg.length} bytes)`);
 
 console.log("\nAll SVG previews generated.");

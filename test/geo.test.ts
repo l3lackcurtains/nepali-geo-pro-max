@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   computeBBox,
   findDistrictFeatureByCoords,
+  findLocalUnitFeatureByCoords,
   findProvinceFeatureByCoords,
   pointInGeometry,
   toSvg,
+  toSvgPaths,
 } from "../src/index.js";
 import { NEPAL_DISTRICTS_GEO } from "../src/geo/districts.geo.js";
+import { NEPAL_LOCAL_UNITS_GEO } from "../src/geo/local-units.geo.js";
 import { NEPAL_PROVINCES_GEO } from "../src/geo/provinces.geo.js";
 
 describe("GeoJSON data integrity", () => {
@@ -17,6 +20,28 @@ describe("GeoJSON data integrity", () => {
 
   it("provinces FeatureCollection has 7 features", () => {
     expect(NEPAL_PROVINCES_GEO.features).toHaveLength(7);
+  });
+
+  it("local-units FeatureCollection has 753 features", () => {
+    expect(NEPAL_LOCAL_UNITS_GEO.features).toHaveLength(753);
+  });
+
+  it("every local-unit feature has expected properties", () => {
+    for (const f of NEPAL_LOCAL_UNITS_GEO.features) {
+      expect(f.properties.nameEn.length).toBeGreaterThan(0);
+      expect(f.properties.nameNe.length).toBeGreaterThan(0);
+      expect(f.properties.districtId).toMatch(/^P[1-7]\.D\d{2}$/);
+      expect(f.properties.provinceId).toMatch(/^P[1-7]$/);
+      expect(["metropolitan", "sub-metropolitan", "municipality", "rural-municipality"])
+        .toContain(f.properties.type);
+    }
+  });
+
+  it("local-units type counts include all 6 metro + 11 sub-metro", () => {
+    const metro = NEPAL_LOCAL_UNITS_GEO.features.filter((f) => f.properties.type === "metropolitan");
+    const subMetro = NEPAL_LOCAL_UNITS_GEO.features.filter((f) => f.properties.type === "sub-metropolitan");
+    expect(metro).toHaveLength(6);
+    expect(subMetro).toHaveLength(11);
   });
 
   it("every district feature has expected properties", () => {
@@ -147,6 +172,50 @@ describe("toSvg", () => {
   });
 });
 
+describe("toSvgPaths", () => {
+  it("returns structured per-feature data", () => {
+    const r = toSvgPaths(NEPAL_PROVINCES_GEO, { width: 800 });
+    expect(r.viewBox).toMatch(/^0 0 800 \d+$/);
+    expect(r.width).toBe(800);
+    expect(r.height).toBeGreaterThan(0);
+    expect(r.bbox).toHaveLength(4);
+    expect(r.paths).toHaveLength(7);
+    for (const p of r.paths) {
+      expect(p.id).toBeTruthy();
+      expect(p.d).toMatch(/^M[\d. ]/);
+      expect(p.d.endsWith("Z")).toBe(true);
+      expect(p.fill).toBeTruthy();
+      expect(p.feature.properties).toBeDefined();
+    }
+  });
+
+  it("path IDs reflect feature IDs", () => {
+    const r = toSvgPaths(NEPAL_PROVINCES_GEO);
+    expect(r.paths.map((p) => p.id).sort()).toEqual(["P1", "P2", "P3", "P4", "P5", "P6", "P7"]);
+  });
+
+  it("fill function output is preserved on each path", () => {
+    const r = toSvgPaths(NEPAL_PROVINCES_GEO, {
+      fill: (f) => (f.properties.id === "P3" ? "red" : "blue"),
+    });
+    expect(r.paths.find((p) => p.id === "P3")?.fill).toBe("red");
+    expect(r.paths.find((p) => p.id === "P1")?.fill).toBe("blue");
+  });
+
+  it("local-units have synthetic ids when not in properties", () => {
+    const r = toSvgPaths(NEPAL_LOCAL_UNITS_GEO);
+    expect(r.paths).toHaveLength(753);
+    // No `id` property on LocalUnitGeoFeature, so synthetic `path-N` IDs are emitted
+    expect(r.paths[0]?.id).toMatch(/^path-\d+$/);
+  });
+
+  it("toSvg uses toSvgPaths internally — viewBox matches", () => {
+    const svg = toSvg(NEPAL_PROVINCES_GEO, { width: 500 });
+    const r = toSvgPaths(NEPAL_PROVINCES_GEO, { width: 500 });
+    expect(svg).toContain(`viewBox="${r.viewBox}"`);
+  });
+});
+
 describe("point-in-polygon", () => {
   it("Kathmandu (27.7172, 85.3240) → P3 / Kathmandu district", () => {
     const province = findProvinceFeatureByCoords(NEPAL_PROVINCES_GEO, 27.7172, 85.3240);
@@ -172,6 +241,19 @@ describe("point-in-polygon", () => {
     const district = findDistrictFeatureByCoords(NEPAL_DISTRICTS_GEO, 26.7271, 85.9407);
     expect(district?.properties.nameEn).toBe("Dhanusha");
     expect(district?.properties.provinceId).toBe("P2");
+  });
+
+  it("findLocalUnitFeatureByCoords resolves Kathmandu Metropolitan", () => {
+    const lu = findLocalUnitFeatureByCoords(NEPAL_LOCAL_UNITS_GEO, 27.7172, 85.3240);
+    expect(lu?.properties.nameEn).toMatch(/Kathmandu/i);
+    expect(lu?.properties.type).toBe("metropolitan");
+    expect(lu?.properties.districtId).toBe("P3.D05");
+  });
+
+  it("findLocalUnitFeatureByCoords resolves Pokhara Metropolitan", () => {
+    const lu = findLocalUnitFeatureByCoords(NEPAL_LOCAL_UNITS_GEO, 28.2096, 83.9856);
+    expect(lu?.properties.nameEn).toMatch(/Pokhara/i);
+    expect(lu?.properties.type).toBe("metropolitan");
   });
 
   it("Far outside Nepal (e.g. Delhi 28.6, 77.2) → undefined", () => {

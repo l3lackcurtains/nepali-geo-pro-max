@@ -8,6 +8,7 @@
 import type {
   AdminFeature,
   DistrictGeoFeatureCollection,
+  LocalUnitGeoFeatureCollection,
   PolygonGeometry,
   Position,
   ProvinceGeoFeatureCollection,
@@ -87,4 +88,12 @@ export function findDistrictFeatureByCoords(
   lng: number,
 ) {
   return findFeatureByCoords(districts, lat, lng);
+}
+
+export function findLocalUnitFeatureByCoords(
+  localUnits: LocalUnitGeoFeatureCollection,
+  lat: number,
+  lng: number,
+) {
+  return findFeatureByCoords(localUnits, lat, lng);
 }
