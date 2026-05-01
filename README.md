@@ -133,9 +133,15 @@ validateAddress({ province: "Bagmati", district: "Kaski" }).errors;
 | Municipalities | **276 / 276** ✅ | 276 | Bilingual + ward counts |
 | Rural municipalities | **460 / 460** ✅ | 460 | Bilingual + ward counts |
 | **All local-level units** | **753 / 753** ✅ | 753 | Full 6+11+276+460 ✓ |
+| Postal codes (palika) | **193 / 753** (25.6%) | ~753 | All 17 metro/sub-metro + all 77 district HQs + verified branches |
+| District postcode prefixes | **77 / 77** ✅ | 77 | First-2-digit lookup |
 | Wards (per palika) | derived ✅ | ~6,743 | Each palika carries `wards: number`; individual ward records generated on demand |
 
-**Data source:** [`sagautam5/local-states-nepal`](https://github.com/sagautam5/local-states-nepal) (MIT) — bilingual JSON for the post-2017 federal hierarchy. Cross-validated against the 6/11/276/460/753 invariants.
+**Data sources:**
+- Palikas: [`sagautam5/local-states-nepal`](https://github.com/sagautam5/local-states-nepal) (MIT) — bilingual JSON, cross-validated against 6/11/276/460/753 invariants.
+- Postal codes: Wikipedia "Postal codes in Nepal" + Nepal General Post Office (gpo.gov.np). Uses **legacy 1991 codes** (still operationally dominant); a parallel 2025 federal-aligned system exists at GPO but isn't yet used in everyday post.
+
+**Postal-code coverage note:** ~74% of palikas don't have an authoritative legacy code because most rural municipalities were formed in 2017 by merging former VDCs — the post-office branch still carries the old VDC name (e.g. PO "Pala" 33302 in Baglung). Mapping these requires palika-ward-to-VDC research. We **omit** rather than fabricate — partial high-confidence data over guesswork.
 
 ### Legacy (pre-2015 / pre-2017)
 
@@ -512,6 +518,9 @@ PRs to seed `data/vdcs.ts` with verified, district-by-district data are very wel
 | `REGIONS` | All 5 development regions |
 | `ZONES` | All 14 zones |
 | `LEGACY_DISTRICTS` | All 75 pre-2017 districts |
+| `POSTAL_CODES` | 193 palika → primary code map |
+| `POSTAL_CODE_BRANCHES` | 21 districts with full branch-postcode lists |
+| `DISTRICT_POSTCODE_PREFIXES` | All 77 districts → first 2 digits |
 | `DISTRICTS_BY_PROVINCE_COUNT` | `{ P1: 14, P2: 8, ... }` |
 | `LOCAL_UNIT_TYPE_COUNTS` | Nepal-wide counts |
 | `TOTAL_LOCAL_UNITS` | 753 |
@@ -606,10 +615,13 @@ if (unit) {
 
 ## 🛣️ Roadmap
 
-- **v1.1** — Postal-code lookups for every palika (currently shipped for the 17 metro/sub-metro tier only)
+- ✅ **v1.0** — Full 7 provinces + 77 districts + 753 palikas + bilingual + legacy hierarchy
+- ✅ **v1.1** — Postal codes (193/753 verified palikas + all 77 district prefixes + branch lookups)
+- **v1.2** — Postal-code coverage expansion — palika-ward-to-VDC research to map remaining ~560 palikas
 - **v1.x** — Seed `LEGACY_VDCS` with verified VDC data (PRs welcome)
 - **v2.0** — Ward-level data + boundary GeoJSON via subpath imports (`/geo/provinces`, `/geo/districts`, `/geo/local-units`)
 - **v2.x** — Point-in-polygon `getProvinceByCoords(lat, lng)` for geo-queries
+- **v2.x** — Switch to new 2025 GPO federal-aligned postal codes once Nepal Post operationalizes them
 
 ---
 

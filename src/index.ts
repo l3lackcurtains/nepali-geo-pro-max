@@ -32,6 +32,11 @@ export {
   LOCAL_UNIT_TYPE_COUNTS,
   TOTAL_LOCAL_UNITS,
 } from "./data/local-units.js";
+export {
+  DISTRICT_POSTCODE_PREFIXES,
+  POSTAL_CODES,
+  POSTAL_CODE_BRANCHES,
+} from "./data/postal-codes.js";
 
 // ---------- Data — legacy (pre-2015 regions/zones, pre-2017 districts/VDCs) ----------
 export { REGIONS } from "./data/regions.js";

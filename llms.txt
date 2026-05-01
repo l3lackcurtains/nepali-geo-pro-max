@@ -17,6 +17,7 @@
 | All local units | `getLocalUnits()` → **753** (6+11+276+460) |
 | Local unit by name/alias | `getLocalUnit("KMC" \| "Patan" \| "Lalitpur Metropolitan City")` |
 | Lookup by postal code | `findByPostalCode("44600")` → KMC |
+| Postal-code tables | `POSTAL_CODES`, `POSTAL_CODE_BRANCHES`, `DISTRICT_POSTCODE_PREFIXES` |
 | Walk parents | `getParents("P3.D05.L01")` |
 | Fuzzy + bilingual search | `search("ललितपुर")` or `search("Lalipur")` |
 | Format an address | `formatAddress(parts, { locale?, style? })` |
@@ -65,8 +66,12 @@
 | Municipalities | 276 | 276 ✅ |
 | Rural municipalities | 460 | 460 ✅ |
 | **Total local-level units** | **753** | **753 ✅** |
+| Postal codes (palika) | 753 | **193** (25.6%) ⏳ |
+| District postcode prefixes | 77 | 77 ✅ |
 
-Source for full palika dataset: [`sagautam5/local-states-nepal`](https://github.com/sagautam5/local-states-nepal) (MIT-licensed) — bilingual JSON cross-validated against the 6/11/276/460/753 invariants.
+Sources:
+- Palikas: [`sagautam5/local-states-nepal`](https://github.com/sagautam5/local-states-nepal) (MIT-licensed) — bilingual JSON cross-validated against 6/11/276/460/753 invariants.
+- Postal codes: Wikipedia "Postal codes in Nepal" + Nepal General Post Office (gpo.gov.np). Uses **legacy 1991 codes** (still operationally dominant); a parallel 2025 federal-aligned system exists but isn't yet used in everyday post. ~74% of palikas don't have an authoritative legacy code because most rural municipalities formed in 2017 by merging former VDCs — those POs still carry the old VDC name. Codes are **omitted rather than fabricated** for those palikas.
 
 District distribution by province:
 - P1 Koshi: 14
@@ -368,6 +373,7 @@ import {
   // Constants
   PROVINCES, DISTRICTS, LOCAL_UNITS,
   REGIONS, ZONES, LEGACY_DISTRICTS,
+  POSTAL_CODES, POSTAL_CODE_BRANCHES, DISTRICT_POSTCODE_PREFIXES,
   DISTRICTS_BY_PROVINCE_COUNT,
   LOCAL_UNIT_TYPE_COUNTS, TOTAL_LOCAL_UNITS,
   TOTAL_LEGACY_DISTRICTS, APPROX_TOTAL_VDCS,
@@ -388,7 +394,10 @@ import type {
 
 ## Roadmap
 
-- v1.1: postal codes for every palika (currently for metro/sub-metro tier only)
+- ✅ v1.0: full 753 palika dataset
+- ✅ v1.1: postal codes (193/753 palikas + all 77 district prefixes)
+- v1.2: postal-code coverage expansion via palika-ward-to-VDC research
 - v1.x: seed `LEGACY_VDCS` with verified VDC data (PRs welcome)
 - v2.0: ward-level data + boundary GeoJSON via subpath imports
 - v2.x: `getProvinceByCoords(lat, lng)` point-in-polygon
+- v2.x: switch to new 2025 GPO federal-aligned codes once Nepal Post operationalizes them

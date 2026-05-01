@@ -24,6 +24,7 @@
  */
 
 import { DISTRICTS } from "./districts.js";
+import { POSTAL_CODES } from "./postal-codes.js";
 import type { DistrictId, LocalUnit, LocalUnitId, LocalUnitType } from "../types.js";
 
 interface FullSeed {
@@ -897,6 +898,22 @@ function findDistrictId(nameEn: string): DistrictId {
   return d.id;
 }
 
+/**
+ * Resolve a postal code for a seed entry, trying the exact name first
+ * and then the disambiguated `"<name> (<district>)"` form.
+ *
+ * Returns the explicit `seed.postalCode` if provided (metro/sub-metro overrides),
+ * otherwise looks up `POSTAL_CODES`.
+ */
+function resolvePostalCode(seed: FullSeed): string | undefined {
+  if (seed.postalCode !== undefined) return seed.postalCode;
+  const k = seed.nameEn.toLowerCase();
+  if (POSTAL_CODES[k]) return POSTAL_CODES[k];
+  const kd = `${k} (${seed.districtNameEn.toLowerCase()})`;
+  if (POSTAL_CODES[kd]) return POSTAL_CODES[kd];
+  return undefined;
+}
+
 function buildAll(): readonly LocalUnit[] {
   const perDistrict = new Map<DistrictId, number>();
   return FULL_SEED.map((seed): LocalUnit => {
@@ -904,6 +921,7 @@ function buildAll(): readonly LocalUnit[] {
     const next = (perDistrict.get(districtId) ?? 0) + 1;
     perDistrict.set(districtId, next);
     const id = `${districtId}.L${String(next).padStart(2, "0")}` as LocalUnitId;
+    const postalCode = resolvePostalCode(seed);
     return {
       id,
       nameEn: seed.nameEn,
@@ -911,7 +929,7 @@ function buildAll(): readonly LocalUnit[] {
       type: seed.type,
       districtId,
       wards: seed.wards,
-      ...(seed.postalCode !== undefined && { postalCode: seed.postalCode }),
+      ...(postalCode !== undefined && { postalCode }),
       slug: slugify(
         seed.nameEn.replace(
           /\s*(metropolitan|sub-metropolitan|municipality|rural municipality).*/i,
