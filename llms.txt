@@ -1,0 +1,394 @@
+# nepali-geo-pro-max — LLM cheat sheet
+
+> Nepal administrative divisions library covering BOTH the current federal hierarchy (post-2015 constitution / post-2017 local-level reorg) AND the legacy hierarchy (pre-2015 development regions / zones, pre-2017 75 districts, VDCs).
+> Current: 7 provinces · 77 districts · 17 metro/sub-metro local units (v1) · postal codes · fuzzy search · address formatter / parser / validator.
+> Legacy: 5 regions · 14 zones · 75 districts · cross-walks to current districts · VDC API.
+> TypeScript-first. Zero deps. ESM + CJS.
+
+## TL;DR — current hierarchy
+
+| You want… | Call |
+|---|---|
+| All provinces | `getProvinces()` → 7 |
+| Province by name/id/number/alias | `getProvince("Bagmati" \| 3 \| "P3" \| "बागमती" \| "Province 3")` |
+| All districts | `getDistricts()` → 77 |
+| District by name/id/alias | `getDistrict("Kathmandu" \| "Kavre" \| "P3.D05")` |
+| Districts of a province | `getDistrictsByProvince("Bagmati")` |
+| All shipped local units | `getLocalUnits()` → 17 (metro+sub-metro) |
+| Local unit by name/alias | `getLocalUnit("KMC" \| "Patan" \| "Lalitpur Metropolitan City")` |
+| Lookup by postal code | `findByPostalCode("44600")` → KMC |
+| Walk parents | `getParents("P3.D05.L01")` |
+| Fuzzy + bilingual search | `search("ललितपुर")` or `search("Lalipur")` |
+| Format an address | `formatAddress(parts, { locale?, style? })` |
+| Parse free-form input | `parseAddress(raw).parts` (returns IDs) |
+| Validate an address | `validateAddress(parts).ok` |
+
+## TL;DR — legacy hierarchy (pre-2015 / pre-2017)
+
+| You want… | Call |
+|---|---|
+| All 5 development regions | `getRegions()` |
+| Region by name/id/number/alias | `getRegion("Western" \| 3 \| "R3" \| "पूर्वाञ्चल")` |
+| All 14 zones | `getZones()` |
+| Zone by name/id | `getZone("Bagmati" \| "Z05")` |
+| Zones in a region | `getZonesByRegion("R1")` |
+| All 75 legacy districts | `getLegacyDistricts()` |
+| Legacy district by name/id/alias | `getLegacyDistrict("Kathmandu" \| "LD23" \| "Kavre")` |
+| Legacy districts in a zone | `getLegacyDistrictsByZone("Bagmati")` → 8 |
+| Legacy districts in a region | `getLegacyDistrictsByRegion("Mid-Western")` → 15 |
+| Cross-walk: legacy → current | `getCurrentDistrictsForLegacyDistrict("Nawalparasi")` → [Nawalpur, Parasi] |
+| Cross-walk: current → legacy | `getLegacyDistrictForCurrentDistrict("Eastern Rukum")` → Rukum |
+| Full cross-walk | `crossWalk("Kathmandu")` → `{ legacy, current[], zone, region }` |
+| VDCs (registry) | `getVdcs()`, `getVdc(name)`, `registerVdcs([...])` |
+
+## Mental model (8 rules)
+
+1. **Two hierarchies coexist**:
+   - Current (post-2015 / 2017): Province → District → LocalUnit → Ward. IDs: `P3.D05.L01.W05`.
+   - Legacy (pre-2015 / 2017): Region → Zone → LegacyDistrict → VDC. IDs: `R2 / Z05 / LD23 / LD23.V001`.
+2. **Bilingual everywhere**: every record has `nameEn` (Roman) + `nameNe` (Devanagari). Lookups accept either.
+3. **Aliases work**: `getDistrict("Kavre")` → "Kavrepalanchok"; `getLocalUnit("KMC")` → KMC; `getProvince("Province 3")` → Bagmati; `getRegion("Far-West")` → R5; `getLegacyDistrict("Kavre")` → Kavrepalanchok.
+4. **Cross-walks bridge legacy ↔ current**: `getCurrentDistrictsForLegacyDistrict("Nawalparasi")` returns 2 districts (Nawalpur + Parasi); `getLegacyDistrictForCurrentDistrict("Eastern Rukum")` returns Rukum.
+5. **Search is fuzzy + bilingual**: `search("Lalipur")` (typo) and `search("ललितपुर")` both succeed. (Search currently covers current hierarchy only.)
+6. **Parser stores IDs, formatter shows names**: round-trip with `formatAddress(parseAddress(s).parts)`.
+7. **v1 ships full data for current 7+77+17 and full legacy 5+14+75**. Modern municipalities (276+460) and VDCs (~3,915) are populated incrementally — VDCs via `registerVdcs()` runtime hook.
+8. **Validation chains**: `validateAddress({province, district, localUnit, ward})` cross-checks the modern hierarchy. Legacy predicates: `isValidRegion`, `isValidZone`, `isValidLegacyDistrict`.
+
+## Authoritative counts — current hierarchy
+
+| Level | Total | Shipped (v1) |
+|---|---|---|
+| Provinces | 7 | 7 ✅ |
+| Districts | 77 | 77 ✅ |
+| Metropolitan | 6 | 6 ✅ |
+| Sub-metropolitan | 11 | 11 ✅ |
+| Municipalities | 276 | 0 ⏳ |
+| Rural municipalities | 460 | 0 ⏳ |
+| Total local-level units | **753** | 17 |
+
+District distribution by province:
+- P1 Koshi: 14
+- P2 Madhesh: 8
+- P3 Bagmati: 13
+- P4 Gandaki: 11
+- P5 Lumbini: 12
+- P6 Karnali: 10
+- P7 Sudurpashchim: 9
+
+## Authoritative counts — legacy hierarchy
+
+| Level | Total | Shipped (v1) |
+|---|---|---|
+| Development regions | 5 | 5 ✅ |
+| Zones | 14 | 14 ✅ |
+| Legacy districts | 75 | 75 ✅ |
+| VDCs (`registerVdcs` API) | ~3,915 | 0 ⏳ |
+
+Region → Zones → Districts:
+- R1 Eastern: Mechi (4), Koshi (6), Sagarmatha (6) = 16
+- R2 Central: Janakpur (6), Bagmati (8), Narayani (5) = 19
+- R3 Western: Gandaki (6), Lumbini (6), Dhaulagiri (4) = 16
+- R4 Mid-Western: Rapti (5), Bheri (5), Karnali (5) = 15
+- R5 Far-Western: Seti (5), Mahakali (4) = 9
+- Total: 4+6+6 + 6+8+5 + 6+6+4 + 5+5+5 + 5+4 = 75 ✓
+
+Legacy → Current district splits:
+- Nawalparasi → [Nawalpur (P4.D08), Parasi (P5.D09)]
+- Rukum → [Eastern Rukum (P5.D05), Western Rukum (P6.D10)]
+- All other 73 legacy districts → 1:1 to a single modern district.
+
+## Type signatures (verbatim)
+
+```ts
+// Current hierarchy
+type ProvinceId = `P${1 | 2 | 3 | 4 | 5 | 6 | 7}`;
+type DistrictId = `${ProvinceId}.D${string}`;
+type LocalUnitId = `${DistrictId}.L${string}`;
+type WardId = `${LocalUnitId}.W${string}`;
+type LocalUnitType = "metropolitan" | "sub-metropolitan" | "municipality" | "rural-municipality";
+
+// Legacy hierarchy
+type RegionId = `R${1 | 2 | 3 | 4 | 5}`;
+type ZoneId = `Z${string}`;
+type LegacyDistrictId = `LD${string}`;
+type VdcId = `${LegacyDistrictId}.V${string}`;
+
+interface LatLng { lat: number; lng: number; }
+
+interface Province {
+  id: ProvinceId; number: 1|2|3|4|5|6|7;
+  nameEn: string; nameNe: string;
+  capital: string; capitalNe: string; capitalCoords: LatLng;
+  areaKm2: number; population: number;
+  slug: string; aliases: readonly string[];
+}
+
+interface District {
+  id: DistrictId; nameEn: string; nameNe: string;
+  provinceId: ProvinceId;
+  headquarters: string; headquartersNe?: string;
+  slug: string; aliases: readonly string[];
+}
+
+interface LocalUnit {
+  id: LocalUnitId; nameEn: string; nameNe: string;
+  type: LocalUnitType; districtId: DistrictId;
+  wards: number; coords?: LatLng; postalCode?: string;
+  slug: string; aliases: readonly string[];
+}
+
+interface AddressParts {
+  province?: string; district?: string; localUnit?: string;
+  ward?: number; tole?: string; house?: string; postalCode?: string;
+}
+
+interface AddressValidationResult {
+  ok: boolean;
+  errors: ReadonlyArray<{ field: keyof AddressParts; code: "missing"|"unknown"|"mismatch"; message: string }>;
+  resolved?: { province?: Province; district?: District; localUnit?: LocalUnit };
+}
+
+interface SearchHit { level: "province"|"district"|"local-unit"; record: Province|District|LocalUnit; score: number; }
+
+// Lookups
+function getProvinces(): readonly Province[];
+function getProvince(query: string | number | ProvinceId): Province | undefined;
+function getDistricts(): readonly District[];
+function getDistrict(query: string | DistrictId): District | undefined;
+function getDistrictsByProvince(province: string | number | ProvinceId): readonly District[];
+function getLocalUnits(): readonly LocalUnit[];
+function getLocalUnit(query: string | LocalUnitId): LocalUnit | undefined;
+function getLocalUnitsByDistrict(district: string | DistrictId): readonly LocalUnit[];
+function getLocalUnitsByProvince(province: string | number | ProvinceId): readonly LocalUnit[];
+function findByPostalCode(code: string): LocalUnit | undefined;
+function getParents(id: DistrictId | LocalUnitId): { province?: Province; district?: District; localUnit?: LocalUnit };
+
+// Iterators
+function eachProvince(): IterableIterator<Province>;
+function eachDistrict(): IterableIterator<District>;
+function eachLocalUnit(): IterableIterator<LocalUnit>;
+
+// Validation
+function isValidProvince(query: string | number): boolean;
+function isValidDistrict(query: string): boolean;
+function isValidLocalUnit(query: string): boolean;
+function isValidWard(localUnit: string | LocalUnitId, ward: number): boolean;
+
+// Search
+interface SearchOptions {
+  levels?: ReadonlyArray<"province" | "district" | "local-unit">;
+  limit?: number;
+  threshold?: number;
+}
+function search(query: string, options?: SearchOptions): SearchHit[];
+
+// Format / Parse / Validate
+interface FormatAddressOptions {
+  locale?: "en" | "ne";
+  style?: "short" | "long" | "postal";
+  separator?: string;
+}
+function formatAddress(parts: AddressParts, options?: FormatAddressOptions): string;
+
+interface ParsedAddress {
+  parts: AddressParts;
+  confidence: number;
+  unmatched: readonly string[];
+}
+function parseAddress(raw: string): ParsedAddress;
+function validateAddress(parts: AddressParts): AddressValidationResult;
+
+// --- Legacy lookups ---
+interface Region {
+  id: RegionId; number: 1|2|3|4|5;
+  nameEn: string; nameNe: string;
+  capital: string; capitalNe: string;
+  slug: string; aliases: readonly string[];
+}
+interface Zone {
+  id: ZoneId; nameEn: string; nameNe: string;
+  regionId: RegionId; headquarters: string;
+  slug: string; aliases: readonly string[];
+}
+interface LegacyDistrict {
+  id: LegacyDistrictId; nameEn: string; nameNe: string;
+  zoneId: ZoneId; headquarters: string;
+  currentDistrictIds: readonly DistrictId[];   // 1 element usually, 2 for Nawalparasi & Rukum
+  slug: string; aliases: readonly string[];
+}
+interface Vdc {
+  id: VdcId; nameEn: string; nameNe: string;
+  legacyDistrictId: LegacyDistrictId; wards: number;
+  slug: string; aliases: readonly string[];
+}
+interface CrossWalkResult {
+  legacy?: LegacyDistrict;
+  current?: readonly District[];
+  zone?: Zone;
+  region?: Region;
+}
+
+function getRegions(): readonly Region[];
+function getRegion(query: string | number | RegionId): Region | undefined;
+function getZones(): readonly Zone[];
+function getZone(query: string | ZoneId): Zone | undefined;
+function getZonesByRegion(region: string | number | RegionId): readonly Zone[];
+function getLegacyDistricts(): readonly LegacyDistrict[];
+function getLegacyDistrict(query: string | LegacyDistrictId): LegacyDistrict | undefined;
+function getLegacyDistrictsByZone(zone: string | ZoneId): readonly LegacyDistrict[];
+function getLegacyDistrictsByRegion(region: string | number | RegionId): readonly LegacyDistrict[];
+function getCurrentDistrictsForLegacyDistrict(legacy: string | LegacyDistrictId): readonly District[];
+function getLegacyDistrictForCurrentDistrict(current: string | DistrictId): LegacyDistrict | undefined;
+function crossWalk(legacy: string | LegacyDistrictId): CrossWalkResult;
+function getVdcs(): readonly Vdc[];
+function getVdc(query: string): Vdc | undefined;
+function getVdcsByLegacyDistrict(legacyDistrict: string | LegacyDistrictId): readonly Vdc[];
+function registerVdcs(vdcs: readonly Vdc[]): number;     // append, returns total
+function setVdcs(vdcs: readonly Vdc[]): number;          // replace
+function clearVdcs(): void;
+function isValidRegion(query: string | number): boolean;
+function isValidZone(query: string): boolean;
+function isValidLegacyDistrict(query: string): boolean;
+function eachRegion(): IterableIterator<Region>;
+function eachZone(): IterableIterator<Zone>;
+function eachLegacyDistrict(): IterableIterator<LegacyDistrict>;
+
+// Constants
+const REGIONS: readonly Region[];                // length 5
+const ZONES: readonly Zone[];                    // length 14
+const LEGACY_DISTRICTS: readonly LegacyDistrict[];  // length 75
+const TOTAL_LEGACY_DISTRICTS = 75;
+const APPROX_TOTAL_VDCS = 3_915;
+```
+
+## Common patterns
+
+### Province → district dropdown
+
+```ts
+const provinces = getProvinces();
+const districts = getDistrictsByProvince(provinceId);
+```
+
+### Bilingual fuzzy search
+
+```ts
+search("Bagmati");          // English
+search("बागमती");            // Devanagari
+search("Lalipur");          // typo → Lalitpur
+search("KMC");              // alias → Kathmandu Metropolitan City
+search("q", { levels: ["local-unit"], threshold: 0.5, limit: 5 });
+```
+
+### Round-trip address normalization
+
+```ts
+const raw = "ward 5, KMC, Kathmandu";
+const { parts } = parseAddress(raw);
+formatAddress(parts);    // "Ward 5, Kathmandu Metropolitan City, Kathmandu, Bagmati Province"
+```
+
+### Postal-code reverse lookup
+
+```ts
+const unit = findByPostalCode("44600");
+const { province, district } = getParents(unit!.id);
+```
+
+### Validate
+
+```ts
+const r = validateAddress({ province: "Bagmati", district: "Kaski" });
+// r.ok === false
+// r.errors[0].code === "mismatch"
+```
+
+### Migrate archived district records (legacy → current)
+
+```ts
+// Old voter roll references "Nawalparasi" but new addresses need
+// to be split into Nawalpur (P4) or Parasi (P5).
+const moderns = getCurrentDistrictsForLegacyDistrict("Nawalparasi");
+// → [<Nawalpur>, <Parasi>]   — disambiguate by VDC name or coords
+```
+
+### Render legacy region label on a report
+
+```ts
+const cw = crossWalk("Kathmandu");
+// `${cw.region?.nameEn} > ${cw.zone?.nameEn} > ${cw.legacy?.nameEn}`
+// "Central Development Region > Bagmati > Kathmandu"
+```
+
+### Use legacy VDC names from a CSV
+
+```ts
+import { registerVdcs, getVdc } from "nepali-geo-pro-max";
+// Load CSV → array of Vdc records → register
+registerVdcs(myVdcsArray);
+getVdc("Sankhu");          // resolves
+```
+
+## Anti-patterns
+
+| Don't | Do |
+|---|---|
+| Hard-code district names | use `getDistrict("Kathmandu")` (handles aliases) |
+| Match `nameEn` strictly | use `search()` for user input (fuzzy + bilingual) |
+| Store names as user input | parse → store IDs (`P3.D05.L01`) → display via formatter |
+| Ship `Province 3` in UI | resolve via `getProvince("Province 3")` then show `.nameEn` ("Bagmati") |
+| Hardcode 75 districts for new data | use 77 (`getDistrict`); use 75 (`getLegacyDistrict`) only for archived records |
+| Use `Far Western` | use canonical `"Sudurpashchim"` (also accepted as alias) |
+| Treat legacy `Nawalparasi` as current | cross-walk via `getCurrentDistrictsForLegacyDistrict` (returns 2 modern districts) |
+| Mix legacy zone with current province in same field | keep two columns or normalize first via `crossWalk` |
+
+## Imports cheat sheet
+
+```ts
+import {
+  // Current lookups
+  getProvinces, getProvince,
+  getDistricts, getDistrict, getDistrictsByProvince,
+  getLocalUnits, getLocalUnit, getLocalUnitsByDistrict, getLocalUnitsByProvince,
+  findByPostalCode, getParents,
+  eachProvince, eachDistrict, eachLocalUnit,
+  isValidProvince, isValidDistrict, isValidLocalUnit, isValidWard,
+  // Legacy lookups
+  getRegions, getRegion,
+  getZones, getZone, getZonesByRegion,
+  getLegacyDistricts, getLegacyDistrict, getLegacyDistrictsByZone, getLegacyDistrictsByRegion,
+  getCurrentDistrictsForLegacyDistrict, getLegacyDistrictForCurrentDistrict, crossWalk,
+  getVdcs, getVdc, getVdcsByLegacyDistrict, registerVdcs, setVdcs, clearVdcs,
+  isValidRegion, isValidZone, isValidLegacyDistrict,
+  eachRegion, eachZone, eachLegacyDistrict,
+  // Search / format / parse / validate (current hierarchy)
+  search, formatAddress, parseAddress, validateAddress,
+  // Constants
+  PROVINCES, DISTRICTS, LOCAL_UNITS,
+  REGIONS, ZONES, LEGACY_DISTRICTS,
+  DISTRICTS_BY_PROVINCE_COUNT,
+  LOCAL_UNIT_TYPE_COUNTS, TOTAL_LOCAL_UNITS,
+  TOTAL_LEGACY_DISTRICTS, APPROX_TOTAL_VDCS,
+} from "nepali-geo-pro-max";
+
+// Types
+import type {
+  // Current
+  Province, District, LocalUnit, Ward,
+  ProvinceId, DistrictId, LocalUnitId, WardId, LocalUnitType,
+  LatLng, AddressParts, AddressValidationResult, SearchHit,
+  // Legacy
+  Region, Zone, LegacyDistrict, Vdc,
+  RegionId, ZoneId, LegacyDistrictId, VdcId,
+  CrossWalkResult,
+} from "nepali-geo-pro-max";
+```
+
+## Roadmap
+
+- v1.1: 276 municipalities (PRs welcome — see contributing)
+- v1.2: 460 rural municipalities
+- v1.3: postal codes for every palika
+- v1.x: seed `LEGACY_VDCS` with verified VDC data (PRs welcome)
+- v2.0: ward-level data + boundary GeoJSON via subpath imports
+- v2.x: `getProvinceByCoords(lat, lng)` point-in-polygon

@@ -1,0 +1,72 @@
+{
+  "name": "nepali-geo-pro-max",
+  "version": "1.0.0",
+  "description": "नेपाली भूगोल — Nepal administrative divisions: 7 provinces, 77 districts, metropolitan / sub-metropolitan / municipalities / rural municipalities, with bilingual names (English + Devanagari), capital coordinates, fuzzy search, address formatter, address parser, and validation. TypeScript-first, zero deps, ESM+CJS.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "llms.txt",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "keywords": [
+    "nepali",
+    "nepal",
+    "nepali-geo",
+    "nepal-geo",
+    "nepal-address",
+    "nepali-address",
+    "provinces",
+    "districts",
+    "municipalities",
+    "metropolitan",
+    "palika",
+    "gaupalika",
+    "nagarpalika",
+    "wards",
+    "postal-code",
+    "address-parser",
+    "address-validator",
+    "devanagari",
+    "bilingual",
+    "typescript",
+    "nepali-geo-pro-max"
+  ],
+  "author": "l3lackcurtains",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/l3lackcurtains/nepali-geo-pro-max.git"
+  },
+  "bugs": {
+    "url": "https://github.com/l3lackcurtains/nepali-geo-pro-max/issues"
+  },
+  "homepage": "https://github.com/l3lackcurtains/nepali-geo-pro-max#readme",
+  "engines": {
+    "node": ">=14"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
