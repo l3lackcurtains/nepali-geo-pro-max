@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  APPROX_TOTAL_VDCS,
   LEGACY_DISTRICTS,
   REGIONS,
   TOTAL_LEGACY_DISTRICTS,
   ZONES,
-  clearVdcs,
   crossWalk,
   getCurrentDistrictsForLegacyDistrict,
   getLegacyDistrict,
@@ -14,16 +12,12 @@ import {
   getLegacyDistrictsByZone,
   getRegion,
   getRegions,
-  getVdc,
-  getVdcs,
   getZone,
   getZones,
   getZonesByRegion,
   isValidLegacyDistrict,
   isValidRegion,
   isValidZone,
-  registerVdcs,
-  setVdcs,
 } from "../src/index.js";
 
 describe("legacy invariants", () => {
@@ -223,59 +217,6 @@ describe("validation predicates", () => {
   it("isValidLegacyDistrict", () => {
     expect(isValidLegacyDistrict("Nawalparasi")).toBe(true);
     expect(isValidLegacyDistrict("Foo")).toBe(false);
-  });
-});
-
-describe("VDCs", () => {
-  it("default registry is empty", () => {
-    clearVdcs();
-    expect(getVdcs()).toEqual([]);
-  });
-
-  it("registerVdcs appends", () => {
-    clearVdcs();
-    registerVdcs([
-      {
-        id: "LD23.V001",
-        nameEn: "TestVDC",
-        nameNe: "परीक्षण",
-        legacyDistrictId: "LD23",
-        wards: 9,
-        slug: "testvdc",
-        aliases: [],
-      },
-    ]);
-    expect(getVdcs()).toHaveLength(1);
-    expect(getVdc("TestVDC")?.legacyDistrictId).toBe("LD23");
-  });
-
-  it("setVdcs replaces", () => {
-    clearVdcs();
-    setVdcs([
-      {
-        id: "LD23.V001",
-        nameEn: "First",
-        nameNe: "पहिलो",
-        legacyDistrictId: "LD23",
-        wards: 9,
-        slug: "first",
-        aliases: [],
-      },
-      {
-        id: "LD23.V002",
-        nameEn: "Second",
-        nameNe: "दोस्रो",
-        legacyDistrictId: "LD23",
-        wards: 9,
-        slug: "second",
-        aliases: [],
-      },
-    ]);
-    expect(getVdcs()).toHaveLength(2);
-  });
-
-  it("APPROX_TOTAL_VDCS is documented", () => {
-    expect(APPROX_TOTAL_VDCS).toBe(3915);
   });
 });
 

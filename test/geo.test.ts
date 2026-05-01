@@ -129,8 +129,9 @@ describe("chuche map (post-May-2020 boundary)", () => {
 describe("toSvg", () => {
   it("emits a valid SVG root", () => {
     const svg = toSvg(NEPAL_PROVINCES_GEO, { width: 200 });
-    expect(svg.startsWith("<svg ")).toBe(true);
-    expect(svg.endsWith("</svg>")).toBe(true);
+    expect(svg.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
+    expect(svg.includes("<svg ")).toBe(true);
+    expect(svg.trimEnd().endsWith("</svg>")).toBe(true);
     expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
     expect(svg).toContain('viewBox="0 0 200');
     // 7 paths, one per province

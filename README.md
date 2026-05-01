@@ -29,7 +29,7 @@ The complete Nepal administrative-divisions library. **7 provinces, 77 districts
 9. [Address Parsing](#-address-parsing)
 10. [Address Validation](#-address-validation)
 11. [Maps & GeoJSON](#-maps--geojson) (SVG render + point-in-polygon)
-12. [Legacy Admin Layer](#-legacy-admin-layer-pre-2015--pre-2017) (5 regions, 14 zones, 75 districts, VDCs)
+12. [Legacy Admin Layer](#-legacy-admin-layer-pre-2015--pre-2017) (5 regions, 14 zones, 75 districts — bidirectional mapping)
 13. [Full API Reference](#-full-api-reference)
 14. [Recipes](#-recipes)
 15. [Roadmap](#-roadmap)
@@ -42,7 +42,7 @@ The complete Nepal administrative-divisions library. **7 provinces, 77 districts
 - 🇳🇵 **Bilingual everywhere** — every record has `nameEn` (Roman) + `nameNe` (Devanagari)
 - 📍 **All 7 provinces + 77 districts** (post-2017 federal restructuring)
 - 🏙️ **All 753 local-level units** — 6 metropolitan + 11 sub-metropolitan + 276 municipalities + 460 rural municipalities, with bilingual names and ward counts
-- 🏛️ **Full legacy layer** — 5 development regions, 14 zones, **75 pre-2017 districts** with cross-walks to current districts (VDC API too)
+- 🏛️ **Legacy admin layer** — 5 development regions, 14 zones, **75 pre-2017 districts** with bidirectional cross-walks to the modern federal hierarchy (for migrating archived datasets)
 - 🔍 **Fuzzy search** — Levenshtein-based, bilingual queries, alias-aware (`KMC` → KMC, `Patan` → Lalitpur)
 - 📮 **Postal-code lookup** — find a city by 5-digit code
 - 📝 **Address formatter** — short / long / postal styles, English or Nepali output
@@ -139,22 +139,23 @@ validateAddress({ province: "Bagmati", district: "Kaski" }).errors;
 | District postcode prefixes | **77 / 77** ✅ | 77 | First-2-digit lookup |
 | Wards (per palika) | derived ✅ | ~6,743 | Each palika carries `wards: number`; individual ward records generated on demand |
 
-**Data sources:**
-- Palikas: [`sagautam5/local-states-nepal`](https://github.com/sagautam5/local-states-nepal) (MIT) — bilingual JSON, cross-validated against 6/11/276/460/753 invariants.
-- Postal codes: Wikipedia "Postal codes in Nepal" + Nepal General Post Office (gpo.gov.np). Uses **legacy 1991 codes** (still operationally dominant); a parallel 2025 federal-aligned system exists at GPO but isn't yet used in everyday post.
+**Two postal-code systems are shipped:**
 
-**Postal-code coverage note (v1.3 expansion):** Coverage jumped from 25.6% → 54.3% by cross-walking the [`code-geek/nepal_data`](https://github.com/code-geek/nepal_data) VDC→palika merger table (3,431 rows) against the Wikipedia Nepal Post directory (919 PO entries). Each new entry is annotated inline with its source. Ambiguous fuzzy matches were dropped; we **omit rather than guess**. The remaining ~46% gap is mostly rural municipalities where Nepal Post never opened a branch in any constituent VDC.
+| Constant | Coverage | When to use |
+|---|---|---|
+| `POSTAL_CODES` | 409 / 753 (54.3%) | Mail addressing — the legacy 1991 codes that are printed on physical mail today |
+| `POSTAL_CODES_2025` | 752 / 753 (99.9%) | Canonical palika lookups — federal-aligned `PDDPP` structure (province + district + palika) |
 
-### Legacy (pre-2015 / pre-2017)
+Legacy 1991 coverage maxes out at ~54% because most rural municipalities were formed in 2017 by merging former VDCs, and Nepal Post never opened a branch in many of those VDCs. We **omit rather than guess** for unverified palikas.
 
-| Level | v1.0 | Total | Notes |
-|---|---|---|---|
-| Development Regions | **5 / 5** ✅ | 5 | Abolished 2015 — Eastern, Central, Western, Mid-Western, Far-Western |
-| Zones | **14 / 14** ✅ | 14 | Abolished 2015 — Mechi, Koshi, Sagarmatha, Janakpur, Bagmati, Narayani, Gandaki, Lumbini, Dhaulagiri, Rapti, Bheri, Karnali, Seti, Mahakali |
-| Legacy districts | **75 / 75** ✅ | 75 | Pre-2017 — with cross-walks to current 77 (Nawalparasi → Nawalpur+Parasi; Rukum → Eastern+Western Rukum) |
-| VDCs (`registerVdcs` API) | 0 / ~3,915 ⏳ | ~3,915 | Types + lookup API ready — register your dataset via `registerVdcs()` |
+### Legacy admin layer (for cross-walking archived data)
 
-**v1.0 ships verified data only.** Adding the remaining 736 palikas requires authoritative MoFAGA / Election Commission datasets — see [Contributing](#-contributing) for the data-add process.
+| Level | Shipped | Notes |
+|---|---|---|
+| Development Regions | **5 / 5** ✅ | Eastern, Central, Western, Mid-Western, Far-Western |
+| Zones | **14 / 14** ✅ | Mechi, Koshi, Sagarmatha, Janakpur, Bagmati, Narayani, Gandaki, Lumbini, Dhaulagiri, Rapti, Bheri, Karnali, Seti, Mahakali |
+| Legacy districts | **75 / 75** ✅ | With bidirectional cross-walks (Nawalparasi → Nawalpur + Parasi; Rukum → Eastern + Western Rukum) |
+
 
 ---
 
@@ -642,11 +643,9 @@ const palikas = district && getLocalUnitsByDistrict(district.id);
 
 Polygon GeoJSON loads only if you import the `/geo/*` subpaths — bundlers like Vite, esbuild, Rollup, and webpack tree-shake them out otherwise.
 
-### Source & licensing
+### About the boundary
 
-Province + district boundaries: **[`Acesmndr/nepal-geojson`](https://github.com/Acesmndr/nepal-geojson)** v3.0.0+ (May 2020), **MIT-licensed** — the **post-May-2020 चुच्चे (chuche) map of Nepal** that incorporates Kalapani, Lipulekh, and Limpiyadhura territories per Nepal's constitutional amendment. All 77 federal-restructured districts.
-
-Palika boundaries: **[`younginnovations/nepal-locallevel-map`](https://github.com/younginnovations/nepal-locallevel-map)**, **MIT-licensed**, sourced from MoFALD + okfnepal localboundaries — all 753 post-2017 local-level units with bilingual names. The Bardiya / Bansagadhi split (2 source polygons) is merged into 1 MultiPolygon during the build step.
+The maps ship the official **चुच्चे (chuche) map of Nepal** — the post-May-2020 boundary that incorporates **Kalapani, Lipulekh, and Limpiyadhura** in Darchula district (Sudurpashchim Province) per Nepal's constitutional amendment. All 77 federal-restructured districts and 753 post-2017 palikas.
 
 Verified by tests:
 - Western beak (`30.45°N, 80.60°E`) is inside Darchula district ✓
@@ -654,60 +653,46 @@ Verified by tests:
 - Kalapani (`30.20°N, 80.95°E`) is inside Darchula ✓
 - Province bounding box reaches `lat 30.47` (vs old map's `~29.93` for the same area) ✓
 
-Simplified offline using a built-in Visvalingam-Whyatt implementation at tolerance `5e-5` (~11 m coordinate precision). Original 1.2 MB compressed to **136 KB districts + 127 KB provinces** — a ~89% size reduction with no perceptible visual loss at country scale.
-
 ---
 
 ## 🏛️ Legacy Admin Layer (pre-2015 / pre-2017)
 
-Nepal's federal restructuring (2015 constitution + 2017 local-level reorganization) replaced an older system that many existing datasets still use:
+Nepal's federal restructuring (2015 constitution + 2017 local-level reorganization) replaced an older hierarchy that many archived datasets still use:
 
 - **5 Development Regions** (विकास क्षेत्र) — abolished 2015
 - **14 Zones** (अञ्चल) — abolished 2015
-- **75 Districts** (pre-2017, before Nawalparasi & Rukum splits)
-- **~3,915 VDCs** (गाउँ विकास समिति) — abolished 2017, replaced by gaupalika / nagarpalika
+- **75 Districts** — pre-2017, before Nawalparasi & Rukum splits
 
-This package ships the legacy hierarchy alongside the current one, with **bidirectional cross-walks** so you can migrate archived data.
+The package ships this layer **only for bidirectional cross-walking** between legacy datasets and the modern federal hierarchy — it's not a complete legacy GIS layer (no VDCs, no coordinates, no headquarters). Migrate, then drop it.
 
 ```ts
 import {
-  getRegions, getZones, getLegacyDistricts,
   getRegion, getZone, getLegacyDistrict,
   getZonesByRegion, getLegacyDistrictsByZone, getLegacyDistrictsByRegion,
   getCurrentDistrictsForLegacyDistrict,
   getLegacyDistrictForCurrentDistrict,
   crossWalk,
-  registerVdcs, getVdcs, getVdc,
 } from "nepali-geo-pro-max";
 
-// 5 regions, 14 zones, 75 districts
-getRegions().length;            // 5
-getZones().length;               // 14
-getLegacyDistricts().length;     // 75
-
-// Lookup
-getRegion("Western")?.id;                                     // "R3"
-getRegion("पूर्वाञ्चल")?.id;                                   // "R1"
-getZone("Bagmati")?.regionId;                                  // "R2" (Central)
-getLegacyDistrict("Kathmandu")?.zoneId;                        // "Z05" (Bagmati)
-getLegacyDistrict("Kavre")?.nameEn;                            // "Kavrepalanchok" (alias)
+// Lookups (bilingual + alias-tolerant)
+getRegion("Western")?.id;                  // "R3"
+getRegion("पूर्वाञ्चल")?.id;                 // "R1"
+getZone("Bagmati")?.regionId;               // "R2" (Central)
+getLegacyDistrict("Kathmandu")?.zoneId;     // "Z05" (Bagmati)
+getLegacyDistrict("Kavre")?.nameEn;         // "Kavrepalanchok" (alias)
 
 // Hierarchy
 getZonesByRegion("R1").map((z) => z.nameEn);
 // ["Mechi", "Koshi", "Sagarmatha"]
+getLegacyDistrictsByZone("Bagmati").length;          // 8
+getLegacyDistrictsByRegion("Mid-Western").length;    // 15
 
-getLegacyDistrictsByZone("Bagmati").length;                    // 8
-getLegacyDistrictsByRegion("Mid-Western").length;              // 15  (Rapti 5 + Bheri 5 + Karnali 5)
-
-// Cross-walks (legacy ↔ current)
-getCurrentDistrictsForLegacyDistrict("Kathmandu").map((d) => d.nameEn);
-// ["Kathmandu"]
-
+// --- The headline: bidirectional cross-walk ---
 getCurrentDistrictsForLegacyDistrict("Nawalparasi").map((d) => d.nameEn);
-// ["Nawalpur", "Parasi"]    ← the 2017 split
+// ["Nawalpur", "Parasi"]               ← the 2017 split
 
 getCurrentDistrictsForLegacyDistrict("Rukum").map((d) => d.nameEn);
-// ["Eastern Rukum", "Western Rukum"]
+// ["Eastern Rukum", "Western Rukum"]   ← split
 
 getLegacyDistrictForCurrentDistrict("Nawalpur")?.nameEn;       // "Nawalparasi"
 getLegacyDistrictForCurrentDistrict("Eastern Rukum")?.nameEn;  // "Rukum"
@@ -732,31 +717,6 @@ crossWalk("Kathmandu");
 | **R4 Mid-Western** (मध्य-पश्चिमाञ्चल) | Rapti · Bheri · Karnali | 5 + 5 + 5 = 15 |
 | **R5 Far-Western** (सुदूर-पश्चिमाञ्चल) | Seti · Mahakali | 5 + 4 = 9 |
 | **Total** | **14 zones** | **75 districts** ✓ |
-
-### VDCs
-
-The full ~3,915 VDC dataset is large and authoritative ingestion (CBS Census 2011 / MoFAGA archives) is non-trivial. v1 ships the **types and lookup API**, with the registry empty by default. Register your dataset at runtime:
-
-```ts
-import { registerVdcs, getVdc } from "nepali-geo-pro-max";
-
-registerVdcs([
-  {
-    id: "LD23.V001",
-    nameEn: "Sankhu",
-    nameNe: "साँखु",
-    legacyDistrictId: "LD23",  // Kathmandu (legacy)
-    wards: 9,
-    slug: "sankhu",
-    aliases: [],
-  },
-  // ... your verified dataset
-]);
-
-getVdc("Sankhu");  // → registered record
-```
-
-PRs to seed `data/vdcs.ts` with verified, district-by-district data are very welcome — see [Contributing](#-contributing).
 
 ---
 
@@ -850,7 +810,7 @@ Types: `BBox`, `ToSvgOptions`, `SvgPath`, `SvgPathsResult`, `Position`, `Polygon
 </details>
 
 <details open>
-<summary><strong>Legacy lookups (pre-2015 / pre-2017)</strong></summary>
+<summary><strong>Legacy admin layer (bidirectional cross-walk)</strong></summary>
 
 | Function | Description |
 |---|---|
@@ -863,15 +823,9 @@ Types: `BBox`, `ToSvgOptions`, `SvgPath`, `SvgPathsResult`, `Position`, `Polygon
 | `getLegacyDistrict(query)` | By id / name / alias |
 | `getLegacyDistrictsByZone(zone)` | Districts inside a zone |
 | `getLegacyDistrictsByRegion(region)` | Districts inside a region |
-| `getCurrentDistrictsForLegacyDistrict(legacy)` | 1 or 2 modern districts |
-| `getLegacyDistrictForCurrentDistrict(current)` | Reverse map |
+| `getCurrentDistrictsForLegacyDistrict(legacy)` | Legacy → 1 or 2 modern districts |
+| `getLegacyDistrictForCurrentDistrict(current)` | Modern → legacy |
 | `crossWalk(legacy)` | `{ legacy, current[], zone, region }` |
-| `getVdcs()` | All registered VDCs |
-| `getVdc(query)` | By id / name / alias |
-| `getVdcsByLegacyDistrict(d)` | VDCs in a legacy district |
-| `registerVdcs(arr)` | Append VDCs at runtime |
-| `setVdcs(arr)` | Replace VDC registry |
-| `clearVdcs()` | Reset registry |
 | `eachRegion / eachZone / eachLegacyDistrict()` | Iterators |
 | `isValidRegion / isValidZone / isValidLegacyDistrict` | Predicates |
 
@@ -888,14 +842,14 @@ Types: `BBox`, `ToSvgOptions`, `SvgPath`, `SvgPathsResult`, `Position`, `Polygon
 | `REGIONS` | All 5 development regions |
 | `ZONES` | All 14 zones |
 | `LEGACY_DISTRICTS` | All 75 pre-2017 districts |
-| `POSTAL_CODES` | 193 palika → primary code map |
+| `POSTAL_CODES` | Legacy 1991 system — 409 palika → primary code |
+| `POSTAL_CODES_2025` | New GPO federal-aligned system — 752 palika → 5-digit `PDDPP` code |
 | `POSTAL_CODE_BRANCHES` | 21 districts with full branch-postcode lists |
-| `DISTRICT_POSTCODE_PREFIXES` | All 77 districts → first 2 digits |
+| `DISTRICT_POSTCODE_PREFIXES` | All 77 districts → first 2 digits (legacy) |
 | `DISTRICTS_BY_PROVINCE_COUNT` | `{ P1: 14, P2: 8, ... }` |
 | `LOCAL_UNIT_TYPE_COUNTS` | Nepal-wide counts |
 | `TOTAL_LOCAL_UNITS` | 753 |
 | `TOTAL_LEGACY_DISTRICTS` | 75 |
-| `APPROX_TOTAL_VDCS` | 3,915 |
 
 </details>
 
@@ -904,7 +858,7 @@ Types: `BBox`, `ToSvgOptions`, `SvgPath`, `SvgPathsResult`, `Position`, `Polygon
 
 Current: `Province`, `District`, `LocalUnit`, `Ward`, `LocalUnitType`, `ProvinceId`, `DistrictId`, `LocalUnitId`, `WardId`, `LatLng`, `AddressParts`, `AddressValidationResult`, `SearchHit`.
 
-Legacy: `Region`, `Zone`, `LegacyDistrict`, `Vdc`, `RegionId`, `ZoneId`, `LegacyDistrictId`, `VdcId`, `CrossWalkResult`.
+Legacy: `Region`, `Zone`, `LegacyDistrict`, `RegionId`, `ZoneId`, `LegacyDistrictId`, `CrossWalkResult`.
 
 </details>
 
@@ -985,39 +939,21 @@ if (unit) {
 
 ## 🛣️ Roadmap
 
-- ✅ **v1.0** — Full 7 provinces + 77 districts + 753 palikas + bilingual + legacy hierarchy
-- ✅ **v1.1** — Postal codes (193/753 verified palikas + all 77 district prefixes + branch lookups)
-- ✅ **v1.2** — Bundled GeoJSON for provinces + districts, `toSvg()` renderer, point-in-polygon
-- ✅ **v1.3** — Postal-code coverage expansion via VDC merger cross-walk (193 → **409 / 753, 54.3%**)
-- ✅ **v2.0** — Palika-level (753) boundary GeoJSON via `/geo/local-units` subpath, `findLocalUnitFeatureByCoords()` point-in-polygon
-- ✅ **v2.1** — `toSvgPaths()` helper for interactive React/Vue/Svelte/Solid rendering
-- **v2.2** — Ward-level boundary GeoJSON (~6,743 wards) via `/geo/wards`
-- **v2.x** — Switch to new 2025 GPO federal-aligned postal codes once Nepal Post operationalizes them
+Possible future additions:
 
-> **Note on VDCs:** The pre-2017 VDC system was abolished and replaced by the 753 palikas. We still ship the `Vdc` type + `registerVdcs()` API for users with archived data, but won't bundle a 3,915-row VDC dataset — it's a dead admin layer.
+- Postal-code coverage past the current 54% (more VDC-merger cross-walk research)
+- Migrate the default to GPO's federal-aligned codes once Nepal Post makes them operationally dominant (today both are shipped: legacy `POSTAL_CODES` and federal-aligned `POSTAL_CODES_2025`)
+- Ward-level boundary GeoJSON (~6,743 wards) via `/geo/wards`
 
 ---
 
 ## 🤝 Contributing
 
-Adding a missing palika? PR template:
+PRs welcome. Common contributions:
 
-1. Open `src/data/local-units.ts`
-2. Append a new entry to `SEED` with verified data:
-   ```ts
-   {
-     nameEn: "Your Municipality Name",
-     nameNe: "तपाईँको पालिकाको नाम",
-     type: "municipality",
-     districtNameEn: "Existing District Name",
-     wards: <official ward count>,
-     postalCode: "<5-digit>",  // optional
-     coords: { lat: ..., lng: ... },  // optional
-     aliases: [...],  // optional
-   }
-   ```
-3. Cite source in PR description: MoFAGA list, Election Commission, or other authoritative dataset
-4. Tests will run automatically; ID is auto-assigned
+- Postal-code mappings for additional palikas (legacy 1991 system) — see `src/data/postal-codes.ts`
+- Bilingual aliases / spelling variants for districts and palikas
+- Bug fixes, type improvements, documentation polish
 
 ```bash
 npm install
@@ -1025,15 +961,6 @@ npm test
 npm run typecheck
 npm run build
 ```
-
-### Authoritative sources
-
-- 🏛️ [MoFAGA — Nepal new structure (gaupalika/nagarpalika)](http://lgcdp.gov.np/nepal-new-structure-gaupalika-nagarpalika-list)
-- 🗳️ [Election Commission Nepal](https://election.gov.np/)
-- 🌐 [HDX — Nepal Subnational Boundaries (cod-ab-npl)](https://data.humdata.org/dataset/cod-ab-npl)
-- 📊 [Open Data Nepal — Local bodies & wards per district](https://opendatanepal.com/dataset/total-number-of-local-bodies-and-wards-per-district-of-nepal)
-- 📕 [Census 2078 (CBS)](https://censusnepal.cbs.gov.np/)
-- 📮 [Nepal Postal Service](https://nepalpost.gov.np/)
 
 ---
 

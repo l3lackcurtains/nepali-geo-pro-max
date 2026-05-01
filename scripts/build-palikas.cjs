@@ -302,7 +302,7 @@ fs.writeFileSync(
 
 import type { LocalUnitGeoFeatureCollection } from "./types.js";
 
-export const NEPAL_LOCAL_UNITS_GEO: LocalUnitGeoFeatureCollection = ${json} as LocalUnitGeoFeatureCollection;
+export const NEPAL_LOCAL_UNITS_GEO: LocalUnitGeoFeatureCollection = ${json};
 `,
 );
 

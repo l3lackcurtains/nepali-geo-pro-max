@@ -1,25 +1,23 @@
 /**
- * Lookups for the **legacy** (pre-2015 / pre-2017) administrative structure:
- * 5 development regions, 14 zones, 75 districts, and VDCs.
+ * Legacy admin layer — bidirectional cross-walk between the pre-2017 hierarchy
+ * (Region → Zone → District) and the modern federal hierarchy (Province →
+ * District → Local-level unit).
  *
- * Use this layer when working with archived datasets (CBS 2011, HMIS, old
- * voter rolls, pre-federal GIS shapefiles). For the current federal hierarchy,
- * see the main lookups in `lookup.ts`.
+ * Use when migrating archived datasets (HMIS, old census, voter rolls).
+ * Nothing more, nothing less.
  *
  * @example
- * getRegion("Western");                    // R3
- * getZone("Bagmati");                      // Z05
- * getLegacyDistrict("Kathmandu");          // LD23
- * getCurrentDistrictsForLegacyDistrict("Nawalparasi");
- * // [<Nawalpur>, <Parasi>]    // (the split)
- * getLegacyDistrictForCurrentDistrict("Nawalpur");
- * // <Nawalparasi>
+ * getRegion("Western");                                  // R3
+ * getZone("Bagmati");                                    // Z05
+ * getLegacyDistrict("Kathmandu");                        // LD23
+ * getCurrentDistrictsForLegacyDistrict("Nawalparasi");   // [<Nawalpur>, <Parasi>]  (split)
+ * getLegacyDistrictForCurrentDistrict("Nawalpur");       // <Nawalparasi>
+ * crossWalk("Kathmandu");                                // { legacy, current, zone, region }
  */
 
 import { DISTRICTS } from "./data/districts.js";
 import { LEGACY_DISTRICTS } from "./data/legacy-districts.js";
 import { REGIONS } from "./data/regions.js";
-import { getAllVdcs } from "./data/vdcs.js";
 import { ZONES } from "./data/zones.js";
 import type {
   CrossWalkResult,
@@ -29,7 +27,6 @@ import type {
   LegacyDistrictId,
   Region,
   RegionId,
-  Vdc,
   Zone,
   ZoneId,
 } from "./types.js";
@@ -150,7 +147,6 @@ export function getCurrentDistrictsForLegacyDistrict(
 export function getLegacyDistrictForCurrentDistrict(
   current: string | DistrictId,
 ): LegacyDistrict | undefined {
-  // Resolve the current district id from any input form via `DISTRICTS` table.
   const q = fold(current);
   const d = DISTRICTS.find(
     (x) =>
@@ -161,18 +157,14 @@ export function getLegacyDistrictForCurrentDistrict(
       x.aliases.some((a) => fold(a) === q),
   );
   if (!d) return undefined;
-  return LEGACY_DISTRICTS.find((ld) =>
-    ld.currentDistrictIds.includes(d.id),
-  );
+  return LEGACY_DISTRICTS.find((ld) => ld.currentDistrictIds.includes(d.id));
 }
 
 /**
- * Full cross-walk for a legacy district — returns the legacy district plus
- * its zone, region, and modern equivalents.
+ * Full cross-walk for a legacy district — legacy unit + zone + region +
+ * modern district equivalents.
  */
-export function crossWalk(
-  legacy: string | LegacyDistrictId,
-): CrossWalkResult {
+export function crossWalk(legacy: string | LegacyDistrictId): CrossWalkResult {
   const ld = getLegacyDistrict(legacy);
   if (!ld) return {};
   const zone = getZone(ld.zoneId);
@@ -182,35 +174,6 @@ export function crossWalk(
     zone,
     region: zone ? getRegion(zone.regionId) : undefined,
   };
-}
-
-// ---------- VDCs ----------
-
-/** All registered VDCs (empty by default — see `data/vdcs.ts` for population). */
-export function getVdcs(): readonly Vdc[] {
-  return getAllVdcs();
-}
-
-/** Lookup a VDC by id, name, or slug. */
-export function getVdc(query: string): Vdc | undefined {
-  const q = fold(query);
-  return getAllVdcs().find(
-    (v) =>
-      v.id === query ||
-      v.slug === q ||
-      fold(v.nameEn) === q ||
-      v.nameNe === query ||
-      v.aliases.some((a) => fold(a) === q),
-  );
-}
-
-/** VDCs inside a legacy district. */
-export function getVdcsByLegacyDistrict(
-  legacyDistrict: string | LegacyDistrictId,
-): readonly Vdc[] {
-  const ld = getLegacyDistrict(legacyDistrict);
-  if (!ld) return [];
-  return getAllVdcs().filter((v) => v.legacyDistrictId === ld.id);
 }
 
 // ---------- Validation predicates ----------

@@ -94,22 +94,20 @@ export interface Ward {
 }
 
 // ----------------------------------------------------------------------
-// Legacy / historical admin structure (abolished by 2015 / 2017 reforms)
+// Legacy admin structure — bidirectional cross-walk only
 // ----------------------------------------------------------------------
 //
-// Pre-2015 hierarchy:
-//   Development Region → Zone → District → VDC / Municipality → Ward
+// Pre-2015 hierarchy: Development Region → Zone → District.
 //
-// - 5 Development Regions   (विकास क्षेत्र) — abolished 2015 by federal constitution.
+// - 5 Development Regions   (विकास क्षेत्र) — abolished 2015.
 // - 14 Zones                (अञ्चल)        — abolished 2015.
 // - 75 Districts            (जिल्ला)       — pre-2017; same as current 77 minus
-//                                            the Nawalparasi → Nawalpur+Parasi split
+//                                            Nawalparasi → Nawalpur+Parasi split
 //                                            and Rukum → Eastern+Western Rukum split.
-// - ~3,915 VDCs            (गाउँ विकास समिति) — abolished 2017, replaced by
-//                                              gaupalika / nagarpalika.
 //
-// These types let users still working with legacy datasets (HMIS, old census,
-// old voter rolls, archived GIS shapefiles) round-trip cleanly.
+// Purpose: convert legacy datasets (HMIS, old census, archived voter rolls)
+// to the modern federal hierarchy and back. Nothing else. No coords, no HQs,
+// no VDCs.
 
 /** Stable canonical Region ID, e.g. `"R3"` for Western. */
 export type RegionId = `R${1 | 2 | 3 | 4 | 5}`;
@@ -117,64 +115,42 @@ export type RegionId = `R${1 | 2 | 3 | 4 | 5}`;
 /** Stable canonical Zone ID, e.g. `"Z05"` for Bagmati Zone. */
 export type ZoneId = `Z${string}`;
 
-/** Stable canonical Legacy District ID, e.g. `"LD37"` for legacy Kathmandu. */
+/** Stable canonical Legacy District ID, e.g. `"LD23"` for legacy Kathmandu. */
 export type LegacyDistrictId = `LD${string}`;
 
-/** Stable canonical VDC ID, e.g. `"LD37.V005"`. */
-export type VdcId = `${LegacyDistrictId}.V${string}`;
-
-/** A development region (pre-2015 top-level admin unit). */
+/** A development region. */
 export interface Region {
   readonly id: RegionId;
-  /** 1-5 sequence number, west-to-east-style traditional ordering. */
   readonly number: 1 | 2 | 3 | 4 | 5;
   readonly nameEn: string;
   readonly nameNe: string;
-  readonly capital: string;
-  readonly capitalNe: string;
   readonly slug: string;
   readonly aliases: readonly string[];
 }
 
-/** A zone (pre-2015 second-level admin unit). */
+/** A zone. */
 export interface Zone {
   readonly id: ZoneId;
   readonly nameEn: string;
   readonly nameNe: string;
   readonly regionId: RegionId;
-  /** Romanized HQ city. */
-  readonly headquarters: string;
   readonly slug: string;
   readonly aliases: readonly string[];
 }
 
-/** A pre-2017 legacy district (75 total). */
+/** A pre-2017 legacy district (75 total). Carries `currentDistrictIds` for cross-walk. */
 export interface LegacyDistrict {
   readonly id: LegacyDistrictId;
   readonly nameEn: string;
   readonly nameNe: string;
   readonly zoneId: ZoneId;
-  /** Romanized HQ. */
-  readonly headquarters: string;
   /** IDs of the modern (post-2017) districts that this legacy district mapped into. */
   readonly currentDistrictIds: readonly DistrictId[];
   readonly slug: string;
   readonly aliases: readonly string[];
 }
 
-/** A village development committee (gone since 2017). */
-export interface Vdc {
-  readonly id: VdcId;
-  readonly nameEn: string;
-  readonly nameNe: string;
-  readonly legacyDistrictId: LegacyDistrictId;
-  /** Standard VDC ward count was 9. */
-  readonly wards: number;
-  readonly slug: string;
-  readonly aliases: readonly string[];
-}
-
-/** Validation result of a legacy ↔ current cross-walk. */
+/** Result of a legacy ↔ current cross-walk. */
 export interface CrossWalkResult {
   readonly legacy?: LegacyDistrict;
   readonly current?: readonly District[];

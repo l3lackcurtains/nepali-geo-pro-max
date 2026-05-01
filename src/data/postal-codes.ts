@@ -158,8 +158,8 @@ export const POSTAL_CODES: Readonly<Record<string, string>> = {
   "dewangunj rural municipality": "56712",
   "dharan sub-metropolitan city": "56700",
   "duhabi municipality": "56707",
-  "inaruwa municipality": "56700",
-  "itahari sub-metropolitan city": "56700",
+  "inaruwa municipality": "56710",
+  "itahari sub-metropolitan city": "56705",
   "koshi rural municipality": "56714",  // via VDC merger (fuzzy: Laukahee)
   // -- Taplejung district --
   "aathrai triveni rural municipality": "57512",  // via VDC merger (Hangpang)

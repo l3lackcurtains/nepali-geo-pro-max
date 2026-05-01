@@ -37,21 +37,15 @@ export {
   POSTAL_CODES,
   POSTAL_CODE_BRANCHES,
 } from "./data/postal-codes.js";
+export { POSTAL_CODES_2025 } from "./data/postal-codes-2025.js";
 
-// ---------- Data — legacy (pre-2015 regions/zones, pre-2017 districts/VDCs) ----------
+// ---------- Data — legacy admin layer (pre-2015 regions/zones, pre-2017 districts) ----------
 export { REGIONS } from "./data/regions.js";
 export { ZONES } from "./data/zones.js";
 export {
   LEGACY_DISTRICTS,
   TOTAL_LEGACY_DISTRICTS,
 } from "./data/legacy-districts.js";
-export {
-  APPROX_TOTAL_VDCS,
-  clearVdcs,
-  getAllVdcs,
-  registerVdcs,
-  setVdcs,
-} from "./data/vdcs.js";
 
 // ---------- Lookups ----------
 export {
@@ -75,7 +69,7 @@ export {
   isValidWard,
 } from "./lookup.js";
 
-// ---------- Legacy lookups (regions, zones, legacy districts, VDCs) ----------
+// ---------- Legacy admin layer (bidirectional cross-walk: regions / zones / legacy districts) ----------
 export {
   crossWalk,
   eachLegacyDistrict,
@@ -89,9 +83,6 @@ export {
   getLegacyDistrictsByZone,
   getRegion,
   getRegions,
-  getVdc,
-  getVdcs,
-  getVdcsByLegacyDistrict,
   getZone,
   getZones,
   getZonesByRegion,
@@ -154,8 +145,6 @@ export type {
   Region,
   RegionId,
   SearchHit,
-  Vdc,
-  VdcId,
   Ward,
   WardId,
   Zone,

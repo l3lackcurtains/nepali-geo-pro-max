@@ -154,7 +154,7 @@ const FULL_SEED: readonly FullSeed[] = [
   { nameEn: "Thulung Dudhkoshi Rural Municipality", nameNe: "थुलुङ दुधकोशी गाउँपालिका", type: "rural-municipality", districtNameEn: "Solukhumbu", wards: 9 },
   // Sunsari: 2 sub-metro, 4 muni, 6 gaupalika
   { nameEn: "Dharan Sub-Metropolitan City", nameNe: "धरान उपमहानगरपालिका", type: "sub-metropolitan", districtNameEn: "Sunsari", wards: 20, postalCode: "56700", aliases: ["Dharan"] },
-  { nameEn: "Itahari Sub-Metropolitan City", nameNe: "इटहरी उपमहानगरपालिका", type: "sub-metropolitan", districtNameEn: "Sunsari", wards: 20, postalCode: "56700", aliases: ["Itahari"] },
+  { nameEn: "Itahari Sub-Metropolitan City", nameNe: "इटहरी उपमहानगरपालिका", type: "sub-metropolitan", districtNameEn: "Sunsari", wards: 20, postalCode: "56705", aliases: ["Itahari"] },
   { nameEn: "BarahaKshetra Municipality", nameNe: "बराहक्षेत्र नगरपालिका", type: "municipality", districtNameEn: "Sunsari", wards: 11 },
   { nameEn: "Duhabi Municipality", nameNe: "दुहवी नगरपालिका", type: "municipality", districtNameEn: "Sunsari", wards: 12 },
   { nameEn: "Inaruwa Municipality", nameNe: "ईनरुवा नगरपालिका", type: "municipality", districtNameEn: "Sunsari", wards: 10 },

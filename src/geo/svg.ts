@@ -244,6 +244,8 @@ export function toSvg(fc: AnyFc, options: ToSvgOptions = {}): string {
       .join("");
   }
 
+  // One <path> per line so editors and SVG previewers don't have to reflow
+  // a single multi-hundred-KB line — VS Code's SVG preview is happier this way.
   const pathEls = projected.paths
     .map((p): string => {
       const baseAttrs: Record<string, string | number> = {
@@ -254,13 +256,13 @@ export function toSvg(fc: AnyFc, options: ToSvgOptions = {}): string {
         "stroke-width": strokeWidth,
       };
       const extra = featureAttrs ? featureAttrs(p.feature) : {};
-      return `<path${attrString({ ...baseAttrs, ...extra })}/>`;
+      return `  <path${attrString({ ...baseAttrs, ...extra })}/>`;
     })
-    .join("");
+    .join("\n");
 
-  const titleEl = title ? `<title>${escapeText(title)}</title>` : "";
+  const titleEl = title ? `  <title>${escapeText(title)}</title>` : "";
   const bgEl = background !== "none"
-    ? `<rect width="100%" height="100%" fill="${escapeAttr(background)}"/>`
+    ? `  <rect width="100%" height="100%" fill="${escapeAttr(background)}"/>`
     : "";
 
   const svgRootAttrs = {
@@ -272,7 +274,16 @@ export function toSvg(fc: AnyFc, options: ToSvgOptions = {}): string {
     ...svgAttrs,
   };
 
-  return `<svg${attrString(svgRootAttrs)}>` + titleEl + bgEl + pathEls + `</svg>`;
+  const lines = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<svg${attrString(svgRootAttrs)}>`,
+    ...(titleEl ? [titleEl] : []),
+    ...(bgEl ? [bgEl] : []),
+    pathEls,
+    `</svg>`,
+    "", // trailing newline
+  ];
+  return lines.join("\n");
 }
 
 function round(n: number): number {

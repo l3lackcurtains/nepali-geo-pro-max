@@ -3,6 +3,7 @@ import {
   DISTRICT_POSTCODE_PREFIXES,
   LOCAL_UNITS,
   POSTAL_CODES,
+  POSTAL_CODES_2025,
   POSTAL_CODE_BRANCHES,
   findByPostalCode,
   getLocalUnit,
@@ -32,6 +33,34 @@ describe("postal-code data", () => {
         expect(c).toMatch(/^\d{5}$/);
       }
     }
+  });
+});
+
+describe("POSTAL_CODES_2025 (new GPO federal-aligned)", () => {
+  it("has 750+ entries (target: 752)", () => {
+    expect(Object.keys(POSTAL_CODES_2025).length).toBeGreaterThanOrEqual(750);
+  });
+
+  it("Kathmandu Metropolitan = 30608 (anchor)", () => {
+    expect(POSTAL_CODES_2025["kathmandu metropolitan city"]).toBe("30608");
+  });
+
+  it("every code is exactly 5 digits", () => {
+    for (const code of Object.values(POSTAL_CODES_2025)) {
+      expect(code).toMatch(/^\d{5}$/);
+    }
+  });
+
+  it("first digit encodes province (1-7)", () => {
+    for (const code of Object.values(POSTAL_CODES_2025)) {
+      const provinceDigit = code[0];
+      expect(["1", "2", "3", "4", "5", "6", "7"]).toContain(provinceDigit);
+    }
+  });
+
+  it("all 5-digit codes are unique", () => {
+    const codes = Object.values(POSTAL_CODES_2025);
+    expect(new Set(codes).size).toBe(codes.length);
   });
 });
 

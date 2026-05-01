@@ -227,7 +227,7 @@ fs.writeFileSync(
 
 import type { DistrictGeoFeatureCollection } from "./types.js";
 
-export const NEPAL_DISTRICTS_GEO: DistrictGeoFeatureCollection = ${districtsJson} as DistrictGeoFeatureCollection;
+export const NEPAL_DISTRICTS_GEO: DistrictGeoFeatureCollection = ${districtsJson};
 `,
 );
 
@@ -274,7 +274,7 @@ fs.writeFileSync(
 
 import type { ProvinceGeoFeatureCollection } from "./types.js";
 
-export const NEPAL_PROVINCES_GEO: ProvinceGeoFeatureCollection = ${provincesJson} as ProvinceGeoFeatureCollection;
+export const NEPAL_PROVINCES_GEO: ProvinceGeoFeatureCollection = ${provincesJson};
 `,
 );
 

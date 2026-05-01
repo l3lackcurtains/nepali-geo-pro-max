@@ -31,7 +31,7 @@
 | Parse free-form input | `parseAddress(raw).parts` (returns IDs) |
 | Validate an address | `validateAddress(parts).ok` |
 
-## TL;DR — legacy hierarchy (pre-2015 / pre-2017)
+## TL;DR — legacy admin layer (bidirectional cross-walk)
 
 | You want… | Call |
 |---|---|
@@ -47,19 +47,18 @@
 | Cross-walk: legacy → current | `getCurrentDistrictsForLegacyDistrict("Nawalparasi")` → [Nawalpur, Parasi] |
 | Cross-walk: current → legacy | `getLegacyDistrictForCurrentDistrict("Eastern Rukum")` → Rukum |
 | Full cross-walk | `crossWalk("Kathmandu")` → `{ legacy, current[], zone, region }` |
-| VDCs (registry) | `getVdcs()`, `getVdc(name)`, `registerVdcs([...])` |
 
 ## Mental model (8 rules)
 
 1. **Two hierarchies coexist**:
    - Current (post-2015 / 2017): Province → District → LocalUnit → Ward. IDs: `P3.D05.L01.W05`.
-   - Legacy (pre-2015 / 2017): Region → Zone → LegacyDistrict → VDC. IDs: `R2 / Z05 / LD23 / LD23.V001`.
+   - Legacy (pre-2015 / 2017): Region → Zone → LegacyDistrict. IDs: `R2 / Z05 / LD23`. Shipped only for bidirectional cross-walk; no VDCs, no coords.
 2. **Bilingual everywhere**: every record has `nameEn` (Roman) + `nameNe` (Devanagari). Lookups accept either.
 3. **Aliases work**: `getDistrict("Kavre")` → "Kavrepalanchok"; `getLocalUnit("KMC")` → KMC; `getProvince("Province 3")` → Bagmati; `getRegion("Far-West")` → R5; `getLegacyDistrict("Kavre")` → Kavrepalanchok.
 4. **Cross-walks bridge legacy ↔ current**: `getCurrentDistrictsForLegacyDistrict("Nawalparasi")` returns 2 districts (Nawalpur + Parasi); `getLegacyDistrictForCurrentDistrict("Eastern Rukum")` returns Rukum.
-5. **Search is fuzzy + bilingual**: `search("Lalipur")` (typo) and `search("ललितपुर")` both succeed. (Search currently covers current hierarchy only.)
+5. **Search is fuzzy + bilingual**: `search("Lalipur")` (typo) and `search("ललितपुर")` both succeed.
 6. **Parser stores IDs, formatter shows names**: round-trip with `formatAddress(parseAddress(s).parts)`.
-7. **v1 ships full data for current 7+77+17 and full legacy 5+14+75**. Modern municipalities (276+460) and VDCs (~3,915) are populated incrementally — VDCs via `registerVdcs()` runtime hook.
+7. **Two postal-code systems**: `POSTAL_CODES` (legacy 1991, what's on mail today, 54% coverage) + `POSTAL_CODES_2025` (new GPO federal-aligned, 99.9% coverage, `PDDPP` structure). Use legacy for addressing, federal-aligned for canonical lookups.
 8. **Validation chains**: `validateAddress({province, district, localUnit, ward})` cross-checks the modern hierarchy. Legacy predicates: `isValidRegion`, `isValidZone`, `isValidLegacyDistrict`.
 
 ## Authoritative counts — current hierarchy
@@ -73,12 +72,14 @@
 | Municipalities | 276 | 276 ✅ |
 | Rural municipalities | 460 | 460 ✅ |
 | **Total local-level units** | **753** | **753 ✅** |
-| Postal codes (palika) | 753 | **193** (25.6%) ⏳ |
+| Postal codes — legacy 1991 (`POSTAL_CODES`) | 753 | **409** (54.3%) |
+| Postal codes — GPO federal-aligned (`POSTAL_CODES_2025`) | 753 | **752** (99.9%) |
 | District postcode prefixes | 77 | 77 ✅ |
 
-Sources:
-- Palikas: [`sagautam5/local-states-nepal`](https://github.com/sagautam5/local-states-nepal) (MIT-licensed) — bilingual JSON cross-validated against 6/11/276/460/753 invariants.
-- Postal codes: Wikipedia "Postal codes in Nepal" + Nepal General Post Office (gpo.gov.np). Uses **legacy 1991 codes** (still operationally dominant); a parallel 2025 federal-aligned system exists but isn't yet used in everyday post. ~74% of palikas don't have an authoritative legacy code because most rural municipalities formed in 2017 by merging former VDCs — those POs still carry the old VDC name. Codes are **omitted rather than fabricated** for those palikas.
+Notes:
+- Palika dataset cross-validated against the 6/11/276/460/753 invariants.
+- Legacy 1991 postal codes cover 54% of palikas — gap is rural-muni POs that retain old VDC names. Omitted rather than fabricated for unverified palikas.
+- Federal-aligned postal codes have 99.9% coverage with `PDDPP` structure: province (1 digit) + district sequence (2 digits) + palika sequence (2 digits). Not yet operationally dominant on physical mail.
 
 District distribution by province:
 - P1 Koshi: 14
@@ -91,12 +92,12 @@ District distribution by province:
 
 ## Authoritative counts — legacy hierarchy
 
-| Level | Total | Shipped (v1) |
+| Level | Total | Shipped |
 |---|---|---|
 | Development regions | 5 | 5 ✅ |
 | Zones | 14 | 14 ✅ |
 | Legacy districts | 75 | 75 ✅ |
-| VDCs (`registerVdcs` API) | ~3,915 | 0 ⏳ |
+| VDCs | ~3,915 | not shipped (dead admin layer; cross-walk at district level is enough) |
 
 Region → Zones → Districts:
 - R1 Eastern: Mechi (4), Koshi (6), Sagarmatha (6) = 16
@@ -121,11 +122,10 @@ type LocalUnitId = `${DistrictId}.L${string}`;
 type WardId = `${LocalUnitId}.W${string}`;
 type LocalUnitType = "metropolitan" | "sub-metropolitan" | "municipality" | "rural-municipality";
 
-// Legacy hierarchy
+// Legacy admin layer (cross-walk only — no VDCs, no coords)
 type RegionId = `R${1 | 2 | 3 | 4 | 5}`;
 type ZoneId = `Z${string}`;
 type LegacyDistrictId = `LD${string}`;
-type VdcId = `${LegacyDistrictId}.V${string}`;
 
 interface LatLng { lat: number; lng: number; }
 
@@ -260,27 +260,21 @@ const NEPAL_PROVINCES_GEO: ProvinceGeoFeatureCollection;       // 7 features
 const NEPAL_DISTRICTS_GEO: DistrictGeoFeatureCollection;       // 77 features
 const NEPAL_LOCAL_UNITS_GEO: LocalUnitGeoFeatureCollection;    // 753 features
 
-// --- Legacy lookups ---
+// --- Legacy admin layer (bidirectional cross-walk only) ---
 interface Region {
   id: RegionId; number: 1|2|3|4|5;
   nameEn: string; nameNe: string;
-  capital: string; capitalNe: string;
   slug: string; aliases: readonly string[];
 }
 interface Zone {
   id: ZoneId; nameEn: string; nameNe: string;
-  regionId: RegionId; headquarters: string;
+  regionId: RegionId;
   slug: string; aliases: readonly string[];
 }
 interface LegacyDistrict {
   id: LegacyDistrictId; nameEn: string; nameNe: string;
-  zoneId: ZoneId; headquarters: string;
+  zoneId: ZoneId;
   currentDistrictIds: readonly DistrictId[];   // 1 element usually, 2 for Nawalparasi & Rukum
-  slug: string; aliases: readonly string[];
-}
-interface Vdc {
-  id: VdcId; nameEn: string; nameNe: string;
-  legacyDistrictId: LegacyDistrictId; wards: number;
   slug: string; aliases: readonly string[];
 }
 interface CrossWalkResult {
@@ -302,12 +296,6 @@ function getLegacyDistrictsByRegion(region: string | number | RegionId): readonl
 function getCurrentDistrictsForLegacyDistrict(legacy: string | LegacyDistrictId): readonly District[];
 function getLegacyDistrictForCurrentDistrict(current: string | DistrictId): LegacyDistrict | undefined;
 function crossWalk(legacy: string | LegacyDistrictId): CrossWalkResult;
-function getVdcs(): readonly Vdc[];
-function getVdc(query: string): Vdc | undefined;
-function getVdcsByLegacyDistrict(legacyDistrict: string | LegacyDistrictId): readonly Vdc[];
-function registerVdcs(vdcs: readonly Vdc[]): number;     // append, returns total
-function setVdcs(vdcs: readonly Vdc[]): number;          // replace
-function clearVdcs(): void;
 function isValidRegion(query: string | number): boolean;
 function isValidZone(query: string): boolean;
 function isValidLegacyDistrict(query: string): boolean;
@@ -315,12 +303,17 @@ function eachRegion(): IterableIterator<Region>;
 function eachZone(): IterableIterator<Zone>;
 function eachLegacyDistrict(): IterableIterator<LegacyDistrict>;
 
-// Constants
+// Postal codes
+const POSTAL_CODES: Readonly<Record<string, string>>;        // legacy 1991, 409 entries
+const POSTAL_CODES_2025: Readonly<Record<string, string>>;   // GPO federal-aligned, 752 entries
+const POSTAL_CODE_BRANCHES: Readonly<Record<string, readonly string[]>>;
+const DISTRICT_POSTCODE_PREFIXES: Readonly<Record<string, string>>;  // 77 districts → first 2 digits
+
+// Legacy admin constants
 const REGIONS: readonly Region[];                // length 5
 const ZONES: readonly Zone[];                    // length 14
 const LEGACY_DISTRICTS: readonly LegacyDistrict[];  // length 75
 const TOTAL_LEGACY_DISTRICTS = 75;
-const APPROX_TOTAL_VDCS = 3_915;
 ```
 
 ## Common patterns
@@ -422,14 +415,6 @@ const feature = findDistrictFeatureByCoords(NEPAL_DISTRICTS_GEO, 27.7172, 85.324
 const d = getDistrict(feature!.properties.id);  // → Kathmandu
 ```
 
-### Use legacy VDC names from a CSV
-
-```ts
-import { registerVdcs, getVdc } from "nepali-geo-pro-max";
-// Load CSV → array of Vdc records → register
-registerVdcs(myVdcsArray);
-getVdc("Sankhu");          // resolves
-```
 
 ## Anti-patterns
 
@@ -460,7 +445,6 @@ import {
   getZones, getZone, getZonesByRegion,
   getLegacyDistricts, getLegacyDistrict, getLegacyDistrictsByZone, getLegacyDistrictsByRegion,
   getCurrentDistrictsForLegacyDistrict, getLegacyDistrictForCurrentDistrict, crossWalk,
-  getVdcs, getVdc, getVdcsByLegacyDistrict, registerVdcs, setVdcs, clearVdcs,
   isValidRegion, isValidZone, isValidLegacyDistrict,
   eachRegion, eachZone, eachLegacyDistrict,
   // Search / format / parse / validate (current hierarchy)
@@ -468,10 +452,10 @@ import {
   // Constants
   PROVINCES, DISTRICTS, LOCAL_UNITS,
   REGIONS, ZONES, LEGACY_DISTRICTS,
-  POSTAL_CODES, POSTAL_CODE_BRANCHES, DISTRICT_POSTCODE_PREFIXES,
+  POSTAL_CODES, POSTAL_CODES_2025, POSTAL_CODE_BRANCHES, DISTRICT_POSTCODE_PREFIXES,
   DISTRICTS_BY_PROVINCE_COUNT,
   LOCAL_UNIT_TYPE_COUNTS, TOTAL_LOCAL_UNITS,
-  TOTAL_LEGACY_DISTRICTS, APPROX_TOTAL_VDCS,
+  TOTAL_LEGACY_DISTRICTS,
 } from "nepali-geo-pro-max";
 
 // Types
@@ -481,23 +465,17 @@ import type {
   ProvinceId, DistrictId, LocalUnitId, WardId, LocalUnitType,
   LatLng, AddressParts, AddressValidationResult, SearchHit,
   // Legacy
-  Region, Zone, LegacyDistrict, Vdc,
-  RegionId, ZoneId, LegacyDistrictId, VdcId,
+  Region, Zone, LegacyDistrict,
+  RegionId, ZoneId, LegacyDistrictId,
   CrossWalkResult,
 } from "nepali-geo-pro-max";
 ```
 
 ## Roadmap
 
-- ✅ v1.0: full 753 palika dataset
-- ✅ v1.1: postal codes (193/753 palikas + all 77 district prefixes)
-- ✅ v1.3: postal codes expanded via VDC merger cross-walk → 409/753 (54.3%)
-- ✅ v1.2: bundled provinces + districts GeoJSON, `toSvg()`, point-in-polygon
-- v1.3: postal-code coverage expansion via palika-ward-to-VDC research
-- v1.x: seed `LEGACY_VDCS` with verified VDC data (PRs welcome)
-- ✅ v2.0: palika-level (753) boundary GeoJSON via `/geo/local-units`, `findLocalUnitFeatureByCoords()`
-- ✅ v2.1: `toSvgPaths()` for interactive React/Vue/Svelte/Solid rendering
-- v2.2: ward-level (~6,743) boundary GeoJSON via `/geo/wards`
-- v2.x: switch to new 2025 GPO federal-aligned codes once Nepal Post operationalizes them
+Possible future additions:
+- Postal-code coverage past the current legacy 54% (more VDC-merger cross-walk research)
+- Migrate the default to GPO's federal-aligned codes once Nepal Post makes them operationally dominant — both are shipped today
+- Ward-level boundary GeoJSON — *deferred*, no properly-licensed source found
 
-VDCs are a dead admin layer (abolished 2017); we ship the `Vdc` type + `registerVdcs()` API for archived-data users but will NOT bundle a VDC dataset.
+VDCs are a dead admin layer (abolished 2017) and are NOT shipped — bidirectional district cross-walk is enough for migrating archived data.

@@ -1,10 +1,8 @@
 /**
- * The 5 development regions of Nepal (विकास क्षेत्र).
+ * The 5 development regions of Nepal (विकास क्षेत्र), abolished in 2015.
  *
- * **Abolished in 2015** by the new federal constitution. Many older datasets
- * (HMIS, pre-2015 census, archived NGO reports) still index by these.
- *
- * Order is **east-to-west** as per traditional Nepalese administrative ordering.
+ * Shipped here only to support cross-walking legacy datasets to the modern
+ * federal hierarchy. Order is east-to-west.
  */
 
 import type { Region } from "../types.js";
@@ -15,8 +13,6 @@ export const REGIONS: readonly Region[] = [
     number: 1,
     nameEn: "Eastern Development Region",
     nameNe: "पूर्वाञ्चल विकास क्षेत्र",
-    capital: "Dhankuta",
-    capitalNe: "धनकुटा",
     slug: "eastern",
     aliases: ["Eastern", "Eastern Region", "Purbanchal", "पूर्वाञ्चल", "Purwanchal"],
   },
@@ -25,8 +21,6 @@ export const REGIONS: readonly Region[] = [
     number: 2,
     nameEn: "Central Development Region",
     nameNe: "मध्यमाञ्चल विकास क्षेत्र",
-    capital: "Kathmandu",
-    capitalNe: "काठमाडौँ",
     slug: "central",
     aliases: ["Central", "Central Region", "Madhyamanchal", "मध्यमाञ्चल"],
   },
@@ -35,8 +29,6 @@ export const REGIONS: readonly Region[] = [
     number: 3,
     nameEn: "Western Development Region",
     nameNe: "पश्चिमाञ्चल विकास क्षेत्र",
-    capital: "Pokhara",
-    capitalNe: "पोखरा",
     slug: "western",
     aliases: ["Western", "Western Region", "Paschimanchal", "पश्चिमाञ्चल"],
   },
@@ -45,8 +37,6 @@ export const REGIONS: readonly Region[] = [
     number: 4,
     nameEn: "Mid-Western Development Region",
     nameNe: "मध्य-पश्चिमाञ्चल विकास क्षेत्र",
-    capital: "Birendranagar",
-    capitalNe: "वीरेन्द्रनगर",
     slug: "mid-western",
     aliases: [
       "Mid-Western",
@@ -61,8 +51,6 @@ export const REGIONS: readonly Region[] = [
     number: 5,
     nameEn: "Far-Western Development Region",
     nameNe: "सुदूर-पश्चिमाञ्चल विकास क्षेत्र",
-    capital: "Dipayal Silgadhi",
-    capitalNe: "दिपायल सिलगढी",
     slug: "far-western",
     aliases: [
       "Far-Western",
