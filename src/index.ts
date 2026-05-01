@@ -100,6 +100,28 @@ export {
   isValidZone,
 } from "./legacy.js";
 
+// ---------- Map / GeoJSON helpers (bundled GeoJSON data ships via subpath imports) ----------
+export {
+  type AdminFeature,
+  type BBox,
+  type DistrictGeoFeature,
+  type DistrictGeoFeatureCollection,
+  type MultiPolygon,
+  type Polygon,
+  type PolygonGeometry,
+  type Position,
+  type ProvinceGeoFeature,
+  type ProvinceGeoFeatureCollection,
+  type Ring,
+  type ToSvgOptions,
+  computeBBox,
+  findDistrictFeatureByCoords,
+  findFeatureByCoords,
+  findProvinceFeatureByCoords,
+  pointInGeometry,
+  toSvg,
+} from "./geo/index.js";
+
 // ---------- Search ----------
 export { type SearchOptions, search } from "./search.js";
 

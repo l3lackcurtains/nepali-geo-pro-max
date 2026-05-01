@@ -1,7 +1,12 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: {
+    index: "src/index.ts",
+    "geo/index": "src/geo/index.ts",
+    "geo/districts": "src/geo/districts.geo.ts",
+    "geo/provinces": "src/geo/provinces.geo.ts",
+  },
   format: ["esm", "cjs"],
   dts: true,
   clean: true,

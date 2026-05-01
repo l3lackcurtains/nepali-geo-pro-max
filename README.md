@@ -28,11 +28,12 @@ The complete Nepal administrative-divisions library. **7 provinces, 77 districts
 8. [Address Formatting](#-address-formatting)
 9. [Address Parsing](#-address-parsing)
 10. [Address Validation](#-address-validation)
-11. [Legacy Admin Layer](#-legacy-admin-layer-pre-2015--pre-2017) (5 regions, 14 zones, 75 districts, VDCs)
-12. [Full API Reference](#-full-api-reference)
-13. [Recipes](#-recipes)
-14. [Roadmap](#-roadmap)
-15. [Contributing](#-contributing)
+11. [Maps & GeoJSON](#-maps--geojson) (SVG render + point-in-polygon)
+12. [Legacy Admin Layer](#-legacy-admin-layer-pre-2015--pre-2017) (5 regions, 14 zones, 75 districts, VDCs)
+13. [Full API Reference](#-full-api-reference)
+14. [Recipes](#-recipes)
+15. [Roadmap](#-roadmap)
+16. [Contributing](#-contributing)
 
 ---
 
@@ -48,6 +49,7 @@ The complete Nepal administrative-divisions library. **7 provinces, 77 districts
 - 📥 **Address parser** — free-form input → structured parts with confidence score
 - ✅ **Address validator** — checks province/district/local-unit/ward consistency
 - 🆔 **Stable canonical IDs** — `P3.D05.L01.W05` (modern) and `R2 / Z05 / LD23` (legacy)
+- 🗺️ **Maps included** — official **चुच्चे (chuche) map** of Nepal (post-May-2020 boundary including Kalapani / Lipulekh / Limpiyadhura), bundled GeoJSON for 7 provinces + 77 districts, `toSvg()` renderer, and `(lat, lng) → district` point-in-polygon — works in Node, the browser, and edge runtimes
 - 📦 **Tree-shakeable** — pure ESM exports, `sideEffects: false`
 - 🎯 **TypeScript-first** — strict mode, branded types, full JSDoc
 - 🪶 **Zero dependencies** — Node, Deno, Bun, browsers, Workers
@@ -309,6 +311,158 @@ validateAddress({ localUnit: "KMC", ward: 99 });
 
 ---
 
+## 🗺️ Maps & GeoJSON
+
+The package ships **the official चुच्चे (chuche) map of Nepal** — the post-May-2020 boundary that includes **Kalapani, Lipulekh, and Limpiyadhura** in Darchula district (Sudurpashchim Province). Simplified district + province GeoJSON, plus a zero-dep **`toSvg()`** renderer and **point-in-polygon** lookup. Works in Node, browsers, Bun, Deno, and edge runtimes.
+
+<p align="center">
+  <img src="docs/nepal-provinces.svg" alt="Nepal — 7 provinces (चुच्चे map) rendered with toSvg()" width="720" />
+</p>
+
+### 5-line map
+
+```ts
+import { toSvg } from "nepali-geo-pro-max";
+import { NEPAL_PROVINCES_GEO } from "nepali-geo-pro-max/geo/provinces";
+
+const PROVINCE_COLORS = {
+  P1: "#E63946",  // Koshi — crimson (Nepal flag)
+  P2: "#F4A261",  // Madhesh — sand
+  P3: "#2A9D8F",  // Bagmati — teal
+  P4: "#457B9D",  // Gandaki — steel blue
+  P5: "#E9C46A",  // Lumbini — saffron
+  P6: "#7209B7",  // Karnali — royal purple
+  P7: "#F77F00",  // Sudurpashchim — orange
+};
+
+const svg = toSvg(NEPAL_PROVINCES_GEO, {
+  width: 960,
+  fill: (f) => PROVINCE_COLORS[f.properties.id],
+  background: "#F8FAFC",
+});
+fs.writeFileSync("nepal.svg", svg);
+```
+
+### Districts coloured by province
+
+<p align="center">
+  <img src="docs/nepal-districts.svg" alt="Nepal — 77 districts coloured by province (chuche map)" width="720" />
+</p>
+
+```ts
+import { toSvg } from "nepali-geo-pro-max";
+import { NEPAL_DISTRICTS_GEO } from "nepali-geo-pro-max/geo/districts";
+
+const svg = toSvg(NEPAL_DISTRICTS_GEO, {
+  width: 960,
+  fill: (f) => PROVINCE_COLORS[f.properties.provinceId],
+  stroke: "#FFFFFF",
+  strokeWidth: 0.6,
+  background: "#F8FAFC",
+  featureAttrs: (f) => ({
+    "data-name": f.properties.nameEn,    // wire up tooltips / hover
+    "data-id": f.properties.id,
+  }),
+});
+```
+
+### Highlight a single district
+
+<p align="center">
+  <img src="docs/nepal-highlight.svg" alt="Nepal — Kathmandu district highlighted" width="720" />
+</p>
+
+```ts
+toSvg(NEPAL_DISTRICTS_GEO, {
+  fill: (f) => f.properties.id === "P3.D05" ? "#E63946" : "#E2E8F0",
+  background: "#F8FAFC",
+});
+```
+
+### Dark theme
+
+<p align="center">
+  <img src="docs/nepal-dark.svg" alt="Nepal — districts on dark background" width="720" />
+</p>
+
+```ts
+toSvg(NEPAL_DISTRICTS_GEO, {
+  fill: (f) => PROVINCE_COLORS[f.properties.provinceId],
+  stroke: "#0F172A",
+  strokeWidth: 0.5,
+  background: "#0F172A",
+});
+```
+
+### Point-in-polygon (`lat, lng → district / province`)
+
+```ts
+import {
+  findDistrictFeatureByCoords,
+  findProvinceFeatureByCoords,
+} from "nepali-geo-pro-max";
+import { NEPAL_DISTRICTS_GEO } from "nepali-geo-pro-max/geo/districts";
+import { NEPAL_PROVINCES_GEO } from "nepali-geo-pro-max/geo/provinces";
+
+findDistrictFeatureByCoords(NEPAL_DISTRICTS_GEO, 27.7172, 85.3240);
+// → { properties: { id: "P3.D05", provinceId: "P3", nameEn: "Kathmandu" }, ... }
+
+findProvinceFeatureByCoords(NEPAL_PROVINCES_GEO, 28.2096, 83.9856);
+// → { properties: { id: "P4" }, ... }
+```
+
+Combine with the rest of the package:
+
+```ts
+import { findDistrictFeatureByCoords, getDistrict, getLocalUnitsByDistrict } from "nepali-geo-pro-max";
+import { NEPAL_DISTRICTS_GEO } from "nepali-geo-pro-max/geo/districts";
+
+const feature = findDistrictFeatureByCoords(NEPAL_DISTRICTS_GEO, lat, lng);
+const district = feature && getDistrict(feature.properties.id);
+const palikas = district && getLocalUnitsByDistrict(district.id);
+```
+
+### `toSvg()` options
+
+| Option | Default | Description |
+|---|---|---|
+| `width` | `800` | SVG width in px |
+| `height` | auto | If unset, derived from bbox aspect ratio |
+| `padding` | `8` | Padding around the map |
+| `fill` | `"#e0e0e0"` | colour string OR `(feature) => string` |
+| `stroke` | `"#fff"` | stroke colour |
+| `strokeWidth` | `0.5` | stroke width |
+| `background` | `"none"` | SVG background colour (skipped when `"none"`) |
+| `title` | — | Accessible `<title>` element |
+| `svgAttrs` | `{}` | Extra root `<svg>` attributes |
+| `featureAttrs` | — | `(f) => Record<string, string \| number>` per `<path>` |
+| `idPrefix` | `"path"` | Used when a feature lacks an `id` |
+
+### Bundle strategy
+
+| Import | Size (ESM) | Contents |
+|---|---|---|
+| `nepali-geo-pro-max` | ~232 KB | Everything except heavy GeoJSON |
+| `nepali-geo-pro-max/geo` | ~6 KB | Just `toSvg`, `findFeatureByCoords`, types |
+| `nepali-geo-pro-max/geo/provinces` | ~160 KB | `NEPAL_PROVINCES_GEO` only |
+| `nepali-geo-pro-max/geo/districts` | ~170 KB | `NEPAL_DISTRICTS_GEO` only |
+
+Polygon GeoJSON loads only if you import the `/geo/*` subpaths — bundlers like Vite, esbuild, Rollup, and webpack tree-shake them out otherwise.
+
+### Source & licensing
+
+Boundaries: **[`Acesmndr/nepal-geojson`](https://github.com/Acesmndr/nepal-geojson)** v3.0.0+ (May 2020), **MIT-licensed** — the **post-May-2020 चुच्चे (chuche) map of Nepal** that incorporates Kalapani, Lipulekh, and Limpiyadhura territories per Nepal's constitutional amendment. All 77 federal-restructured districts.
+
+Verified by tests:
+- Western beak (`30.45°N, 80.60°E`) is inside Darchula district ✓
+- Lipulekh Pass (`30.222°N, 81.023°E`) is inside Darchula ✓
+- Kalapani (`30.20°N, 80.95°E`) is inside Darchula ✓
+- Province bounding box reaches `lat 30.47` (vs old map's `~29.93` for the same area) ✓
+
+Simplified offline using a built-in Visvalingam-Whyatt implementation at tolerance `5e-5` (~11 m coordinate precision). Original 1.2 MB compressed to **136 KB districts + 127 KB provinces** — a ~89% size reduction with no perceptible visual loss at country scale.
+
+---
+
 ## 🏛️ Legacy Admin Layer (pre-2015 / pre-2017)
 
 Nepal's federal restructuring (2015 constitution + 2017 local-level reorganization) replaced an older system that many existing datasets still use:
@@ -480,6 +634,24 @@ PRs to seed `data/vdcs.ts` with verified, district-by-district data are very wel
 </details>
 
 <details open>
+<summary><strong>Maps & GeoJSON</strong></summary>
+
+| Function / Constant | Description |
+|---|---|
+| `toSvg(fc, opts?)` | Render a FeatureCollection to a self-contained SVG string |
+| `computeBBox(fc)` | `[minLng, minLat, maxLng, maxLat]` |
+| `findProvinceFeatureByCoords(fc, lat, lng)` | Point-in-polygon |
+| `findDistrictFeatureByCoords(fc, lat, lng)` | Point-in-polygon |
+| `findFeatureByCoords(fc, lat, lng)` | Generic — works on any FeatureCollection |
+| `pointInGeometry(point, geometry)` | Low-level: ray-cast on a polygon/multipolygon |
+| `NEPAL_PROVINCES_GEO` | `nepali-geo-pro-max/geo/provinces` — 7 provinces |
+| `NEPAL_DISTRICTS_GEO` | `nepali-geo-pro-max/geo/districts` — 77 districts |
+
+Types: `BBox`, `ToSvgOptions`, `Position`, `Polygon`, `MultiPolygon`, `PolygonGeometry`, `Ring`, `ProvinceGeoFeature`, `DistrictGeoFeature`, `ProvinceGeoFeatureCollection`, `DistrictGeoFeatureCollection`, `AdminFeature`.
+
+</details>
+
+<details open>
 <summary><strong>Legacy lookups (pre-2015 / pre-2017)</strong></summary>
 
 | Function | Description |
@@ -617,10 +789,10 @@ if (unit) {
 
 - ✅ **v1.0** — Full 7 provinces + 77 districts + 753 palikas + bilingual + legacy hierarchy
 - ✅ **v1.1** — Postal codes (193/753 verified palikas + all 77 district prefixes + branch lookups)
-- **v1.2** — Postal-code coverage expansion — palika-ward-to-VDC research to map remaining ~560 palikas
+- ✅ **v1.2** — Bundled GeoJSON for 7 provinces + 77 districts via subpath imports, `toSvg()` renderer, `(lat, lng) → district` point-in-polygon lookup
+- **v1.3** — Postal-code coverage expansion — palika-ward-to-VDC research to map remaining ~560 palikas
 - **v1.x** — Seed `LEGACY_VDCS` with verified VDC data (PRs welcome)
-- **v2.0** — Ward-level data + boundary GeoJSON via subpath imports (`/geo/provinces`, `/geo/districts`, `/geo/local-units`)
-- **v2.x** — Point-in-polygon `getProvinceByCoords(lat, lng)` for geo-queries
+- **v2.0** — Palika-level (753) boundary GeoJSON via `/geo/local-units` subpath
 - **v2.x** — Switch to new 2025 GPO federal-aligned postal codes once Nepal Post operationalizes them
 
 ---

@@ -18,6 +18,11 @@
 | Local unit by name/alias | `getLocalUnit("KMC" \| "Patan" \| "Lalitpur Metropolitan City")` |
 | Lookup by postal code | `findByPostalCode("44600")` → KMC |
 | Postal-code tables | `POSTAL_CODES`, `POSTAL_CODE_BRANCHES`, `DISTRICT_POSTCODE_PREFIXES` |
+| Render Nepal map to SVG | `toSvg(NEPAL_PROVINCES_GEO, opts)` or `toSvg(NEPAL_DISTRICTS_GEO, opts)` |
+| Point-in-polygon (lat/lng → admin) | `findDistrictFeatureByCoords(NEPAL_DISTRICTS_GEO, lat, lng)` |
+| Bounding box | `computeBBox(fc)` |
+| Bundled GeoJSON (subpath imports) | `import { NEPAL_PROVINCES_GEO } from "nepali-geo-pro-max/geo/provinces"` |
+| Boundary version | **चुच्चे (chuche) map** — post-May-2020 official boundary (Kalapani / Lipulekh / Limpiyadhura included in Darchula, P7) |
 | Walk parents | `getParents("P3.D05.L01")` |
 | Fuzzy + bilingual search | `search("ललितपुर")` or `search("Lalipur")` |
 | Format an address | `formatAddress(parts, { locale?, style? })` |
@@ -205,6 +210,45 @@ interface ParsedAddress {
 function parseAddress(raw: string): ParsedAddress;
 function validateAddress(parts: AddressParts): AddressValidationResult;
 
+// --- Maps & GeoJSON helpers ---
+type Position = readonly [number, number];                   // [lng, lat]
+type BBox = readonly [number, number, number, number];       // [minLng, minLat, maxLng, maxLat]
+interface Polygon { type: "Polygon"; coordinates: readonly (readonly Position[])[]; }
+interface MultiPolygon { type: "MultiPolygon"; coordinates: readonly (readonly (readonly Position[])[])[]; }
+type PolygonGeometry = Polygon | MultiPolygon;
+interface ProvinceGeoFeature { type: "Feature"; properties: { id: ProvinceId }; geometry: PolygonGeometry; }
+interface DistrictGeoFeature { type: "Feature"; properties: { id: DistrictId; provinceId: ProvinceId; nameEn: string }; geometry: PolygonGeometry; }
+interface ProvinceGeoFeatureCollection { type: "FeatureCollection"; features: readonly ProvinceGeoFeature[]; }
+interface DistrictGeoFeatureCollection { type: "FeatureCollection"; features: readonly DistrictGeoFeature[]; }
+type AdminFeature = ProvinceGeoFeature | DistrictGeoFeature;
+
+interface ToSvgOptions {
+  width?: number;          // default 800
+  height?: number;          // auto if omitted
+  padding?: number;         // default 8
+  fill?: string | ((feature: AdminFeature) => string);
+  stroke?: string;
+  strokeWidth?: number;
+  background?: string;
+  title?: string;
+  svgAttrs?: Record<string, string | number>;
+  featureAttrs?: (feature: AdminFeature) => Record<string, string | number>;
+  idPrefix?: string;
+}
+
+function toSvg(fc: ProvinceGeoFeatureCollection | DistrictGeoFeatureCollection, options?: ToSvgOptions): string;
+function computeBBox(fc: ProvinceGeoFeatureCollection | DistrictGeoFeatureCollection): BBox;
+function pointInGeometry(point: Position, geom: PolygonGeometry): boolean;
+function findFeatureByCoords<F extends AdminFeature>(fc: { features: readonly F[] }, lat: number, lng: number): F | undefined;
+function findProvinceFeatureByCoords(fc: ProvinceGeoFeatureCollection, lat: number, lng: number): ProvinceGeoFeature | undefined;
+function findDistrictFeatureByCoords(fc: DistrictGeoFeatureCollection, lat: number, lng: number): DistrictGeoFeature | undefined;
+
+// Subpath imports — load only when needed:
+// import { NEPAL_PROVINCES_GEO } from "nepali-geo-pro-max/geo/provinces";   // ~160 KB
+// import { NEPAL_DISTRICTS_GEO } from "nepali-geo-pro-max/geo/districts";   // ~170 KB
+const NEPAL_PROVINCES_GEO: ProvinceGeoFeatureCollection;   // 7 features
+const NEPAL_DISTRICTS_GEO: DistrictGeoFeatureCollection;   // 77 features
+
 // --- Legacy lookups ---
 interface Region {
   id: RegionId; number: 1|2|3|4|5;
@@ -327,6 +371,29 @@ const cw = crossWalk("Kathmandu");
 // "Central Development Region > Bagmati > Kathmandu"
 ```
 
+### Render a Nepal map to SVG
+
+```ts
+import { toSvg } from "nepali-geo-pro-max";
+import { NEPAL_PROVINCES_GEO } from "nepali-geo-pro-max/geo/provinces";
+
+const svg = toSvg(NEPAL_PROVINCES_GEO, {
+  width: 800,
+  fill: (f) => ({ P1: "#ef4444", P3: "#10b981" }[f.properties.id] ?? "#888"),
+  background: "#0b1220",
+});
+```
+
+### Lat/lng → district
+
+```ts
+import { findDistrictFeatureByCoords, getDistrict } from "nepali-geo-pro-max";
+import { NEPAL_DISTRICTS_GEO } from "nepali-geo-pro-max/geo/districts";
+
+const feature = findDistrictFeatureByCoords(NEPAL_DISTRICTS_GEO, 27.7172, 85.3240);
+const d = getDistrict(feature!.properties.id);  // → Kathmandu
+```
+
 ### Use legacy VDC names from a CSV
 
 ```ts
@@ -396,8 +463,8 @@ import type {
 
 - ✅ v1.0: full 753 palika dataset
 - ✅ v1.1: postal codes (193/753 palikas + all 77 district prefixes)
-- v1.2: postal-code coverage expansion via palika-ward-to-VDC research
+- ✅ v1.2: bundled provinces + districts GeoJSON, `toSvg()`, point-in-polygon
+- v1.3: postal-code coverage expansion via palika-ward-to-VDC research
 - v1.x: seed `LEGACY_VDCS` with verified VDC data (PRs welcome)
-- v2.0: ward-level data + boundary GeoJSON via subpath imports
-- v2.x: `getProvinceByCoords(lat, lng)` point-in-polygon
+- v2.0: palika-level (753) boundary GeoJSON via `/geo/local-units`
 - v2.x: switch to new 2025 GPO federal-aligned codes once Nepal Post operationalizes them

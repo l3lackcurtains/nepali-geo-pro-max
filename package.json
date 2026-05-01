@@ -12,6 +12,21 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./geo": {
+      "types": "./dist/geo/index.d.ts",
+      "import": "./dist/geo/index.js",
+      "require": "./dist/geo/index.cjs"
+    },
+    "./geo/districts": {
+      "types": "./dist/geo/districts.d.ts",
+      "import": "./dist/geo/districts.js",
+      "require": "./dist/geo/districts.cjs"
+    },
+    "./geo/provinces": {
+      "types": "./dist/geo/provinces.d.ts",
+      "import": "./dist/geo/provinces.js",
+      "require": "./dist/geo/provinces.cjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [
