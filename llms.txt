@@ -471,11 +471,4 @@ import type {
 } from "nepali-geo-pro-max";
 ```
 
-## Roadmap
-
-Possible future additions:
-- Postal-code coverage past the current legacy 54% (more VDC-merger cross-walk research)
-- Migrate the default to GPO's federal-aligned codes once Nepal Post makes them operationally dominant — both are shipped today
-- Ward-level boundary GeoJSON — *deferred*, no properly-licensed source found
-
 VDCs are a dead admin layer (abolished 2017) and are NOT shipped — bidirectional district cross-walk is enough for migrating archived data.

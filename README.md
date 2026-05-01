@@ -32,8 +32,7 @@ The complete Nepal administrative-divisions library. **7 provinces, 77 districts
 12. [Legacy Admin Layer](#-legacy-admin-layer-pre-2015--pre-2017) (5 regions, 14 zones, 75 districts — bidirectional mapping)
 13. [Full API Reference](#-full-api-reference)
 14. [Recipes](#-recipes)
-15. [Roadmap](#-roadmap)
-16. [Contributing](#-contributing)
+15. [Contributing](#-contributing)
 
 ---
 
@@ -934,16 +933,6 @@ if (unit) {
   console.log(`${unit.nameEn}, ${district?.nameEn}, ${province?.nameEn}`);
 }
 ```
-
----
-
-## 🛣️ Roadmap
-
-Possible future additions:
-
-- Postal-code coverage past the current 54% (more VDC-merger cross-walk research)
-- Migrate the default to GPO's federal-aligned codes once Nepal Post makes them operationally dominant (today both are shipped: legacy `POSTAL_CODES` and federal-aligned `POSTAL_CODES_2025`)
-- Ward-level boundary GeoJSON (~6,743 wards) via `/geo/wards`
 
 ---
 
